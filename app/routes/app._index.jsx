@@ -6,14 +6,16 @@ import { authenticate } from "../shopify.server";
 import db from "../db.server"; 
 
 export const loader = async ({ request }) => {
-  await authenticate.admin(request);
+  // Grab the session so we know which store we are currently logged into
+  const { session } = await authenticate.admin(request);
   
   // --- FETCH REAL DATA FROM YOUR NEON DB ---
   const faqs = await db.fAQ.findMany({
     orderBy: { createdAt: 'desc' }
   });
   
-  return { faqs };
+  // Return the faqs and the shop domain (for our theme editor deep link)
+  return { faqs, shop: session.shop };
 };
 
 export const action = async ({ request }) => {
@@ -27,10 +29,8 @@ export const action = async ({ request }) => {
     const entries = JSON.parse(formData.get("entries"));
     const deletedIds = JSON.parse(formData.get("deletedIds") || "[]");
 
-    // Run a database transaction to save everything at once
     const transactions = [];
 
-    // 1. Delete rows the user removed from the set
     if (deletedIds.length > 0) {
       transactions.push(
         db.fAQ.deleteMany({
@@ -39,7 +39,6 @@ export const action = async ({ request }) => {
       );
     }
 
-    // 2. Update existing rows or Create new ones
     entries.forEach((entry) => {
       if (entry.id) {
         transactions.push(
@@ -71,7 +70,7 @@ export const action = async ({ request }) => {
         db.productFAQMapping.upsert({
           where: { faqTitle_productId: { faqTitle: title, productId: pId } },
           create: { faqTitle: title, productId: pId },
-          update: {} // Do nothing if it already exists
+          update: {} 
         })
       );
       await db.$transaction(transactions);
@@ -84,12 +83,10 @@ export const action = async ({ request }) => {
   if (intent === "delete_set") {
     const title = formData.get("title");
     
-    // Delete all FAQs that share this title
     await db.fAQ.deleteMany({
       where: { title: title }
     });
     
-    // Also clean up mappings so we don't leave orphaned data
     await db.productFAQMapping.deleteMany({
       where: { faqTitle: title }
     });
@@ -101,20 +98,18 @@ export const action = async ({ request }) => {
 };
 
 export default function Index() {
-  const { faqs } = useLoaderData(); 
+  const { faqs, shop } = useLoaderData(); // Now grabbing the shop domain
   const fetcher = useFetcher();
   const shopify = useAppBridge();
   
   const [currentView, setCurrentView] = useState("dashboard");
   
-  // State for the Form
   const [formTitle, setFormTitle] = useState(""); 
   const [formRows, setFormRows] = useState([]);
-  const [deletedIds, setDeletedIds] = useState([]); // Tracks rows removed during editing
+  const [deletedIds, setDeletedIds] = useState([]); 
 
   const isLoading = fetcher.state === "submitting";
 
-  // Group FAQs by Title for the List View
   const groupedFaqs = faqs.reduce((acc, faq) => {
     const key = faq.title || "Untitled Set";
     if (!acc[key]) acc[key] = [];
@@ -122,7 +117,6 @@ export default function Index() {
     return acc;
   }, {});
 
-  // Watch for successful save/delete to trigger redirect
   useEffect(() => {
     if (fetcher.data?.status === "success" && fetcher.state === "idle") {
       shopify.toast.show(fetcher.data.message);
@@ -130,7 +124,6 @@ export default function Index() {
     }
   }, [fetcher.data, fetcher.state, shopify]);
 
-  // --- HELPER: Explicit Save Function ---
   const handleSave = () => {
     if (!formTitle.trim()) {
       shopify.toast.show("Please enter a Group Title");
@@ -148,15 +141,12 @@ export default function Index() {
     );
   };
 
-  // --- HELPER: Assign to Product (Resource Picker) ---
   const handleAssignToProduct = async (title) => {
-    // Opens Shopify's native product selector modal
     const selection = await shopify.resourcePicker({ type: 'product', multiple: true });
     
     if (selection && selection.length > 0) {
       const productIds = selection.map(product => product.id);
       
-      // Submit the selection to our action
       fetcher.submit(
         { 
           intent: "assign_products", 
@@ -168,7 +158,6 @@ export default function Index() {
     }
   };
 
-  // --- HELPER: Initialize Editor ---
   const startCreating = () => {
     setFormTitle(""); 
     setFormRows([{ question: "", answer: "" }]); 
@@ -178,12 +167,11 @@ export default function Index() {
 
   const startEditing = (titleKey, faqList) => {
     setFormTitle(titleKey === "Untitled Set" ? "" : titleKey); 
-    setFormRows(faqList); // Load ALL questions for this group
+    setFormRows(faqList); 
     setDeletedIds([]);
     setCurrentView("faq_editor");
   };
 
-  // --- HELPER: Form Row Handlers ---
   const handleInputChange = (index, field, value) => {
     const newRows = [...formRows];
     newRows[index][field] = value;
@@ -196,7 +184,6 @@ export default function Index() {
 
   const removeRow = (index) => {
     const rowToRemove = formRows[index];
-    // If it exists in DB, track its ID so we can delete it on save
     if (rowToRemove.id) {
       setDeletedIds([...deletedIds, rowToRemove.id]);
     }
@@ -206,7 +193,6 @@ export default function Index() {
 
   // --- VIEW: DYNAMIC FAQ EDITOR ---
   if (currentView === "faq_editor") {
-    // Check if we are editing an existing set (if any row has an ID)
     const isEditingExistingSet = formRows.some(row => row.id);
 
     return (
@@ -218,7 +204,6 @@ export default function Index() {
         <div style={{ maxWidth: "700px", margin: "0 auto" }}>
               <s-stack direction="block" gap="large">
                 
-                {/* --- TITLE INPUT --- */}
                 <s-section heading="Set Name">
                   <p style={{marginBottom: "10px", color: "#666"}}>
                     Identify this group of FAQs (e.g. "Winter Jacket Model X").
@@ -240,7 +225,6 @@ export default function Index() {
                   <s-section key={index} heading={`Question #${index + 1}`}>
                     <div style={{ position: "relative" }}>
                       
-                      {/* Remove Row Button */}
                       {formRows.length > 1 && (
                         <div style={{ position: "absolute", top: "-45px", right: "0" }}>
                            <s-button variant="plain" tone="critical" onClick={() => removeRow(index)}>
@@ -278,12 +262,10 @@ export default function Index() {
                   </s-section>
                 ))}
 
-                {/* ADD BUTTON */}
                 <div style={addButtonStyle} onClick={addRow}>
                   <span style={{ fontWeight: "600", color: "#005bd3" }}>+ Add another question</span>
                 </div>
 
-                {/* ACTION BUTTONS (SAVE / DELETE SET) */}
                 <div style={{ marginTop: "20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <s-button 
                     onClick={handleSave} 
@@ -314,7 +296,7 @@ export default function Index() {
     );
   }
 
-  // --- VIEW: FAQ LIST (GROUPED BY TITLE) ---
+  // --- VIEW: FAQ LIST ---
   if (currentView === "faq_list") {
     return (
       <s-page heading="FAQ Manager">
@@ -331,7 +313,6 @@ export default function Index() {
            </div>
 
            <s-stack direction="block" gap="base">
-             {/* Map over the Grouped Titles instead of individual FAQs */}
              {Object.entries(groupedFaqs).map(([title, faqList]) => (
                <div key={title} style={listItemStyle}>
                  <div style={{ flex: 1 }}>
@@ -368,6 +349,30 @@ export default function Index() {
   // --- VIEW: DASHBOARD ---
   return (
     <s-page heading="App Dashboard">
+      
+      {/* --- NEW ENABLE APP EMBED BANNER --- */}
+      <div style={{ 
+        background: "#f0f8ff", 
+        border: "1px solid #cce0ff", 
+        borderRadius: "12px", 
+        padding: "20px", 
+        marginTop: "20px",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center"
+      }}>
+        <div>
+          <h3 style={{ margin: "0 0 5px 0", fontSize: "16px" }}>🚀 Enable FAQs on your Storefront</h3>
+          <p style={{ margin: 0, color: "#555" }}>Turn on the App Embed in your theme editor to automatically inject assigned FAQs on product pages.</p>
+        </div>
+        <s-button 
+          variant="primary" 
+          onClick={() => window.open(`https://${shop}/admin/themes/current/editor?context=apps`, '_blank')}
+        >
+          Open Theme Editor
+        </s-button>
+      </div>
+
       <div style={{ 
         display: "grid", 
         gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", 

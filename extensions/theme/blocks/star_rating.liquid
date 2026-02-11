@@ -1,50 +1,48 @@
-{% if product %}
-<div class="custom-faq-wrapper" style="max-width: 800px; margin: 40px auto; padding: 20px;">
-  <h2 id="faq-heading-{{ block.id }}" style="text-align: {{ block.settings.heading_align }}; display: none;">
-    {{ block.settings.heading }}
-  </h2>
-  
-  <div id="faq-container-{{ block.id }}">
-    </div>
-</div>
-
+{% if request.page_type == 'product' %}
 <script>
   document.addEventListener("DOMContentLoaded", function() {
-    // We format the Shopify Product ID to match what the Database saved (GID format)
+    // 1. Get the current product ID
     const currentProductId = "gid://shopify/Product/{{ product.id }}";
     
-    // REPLACE YOUR_APP_URL with your actual ngrok/cloudflare URL
+    // 2. Fetch the FAQs (Update this URL to your live/Vercel URL)
     const apiUrl = `https://shopify-theme-xi.vercel.app/api/faqs?productId=${encodeURIComponent(currentProductId)}`; 
 
     fetch(apiUrl)
       .then(response => response.json())
       .then(data => {
-        const container = document.getElementById("faq-container-{{ block.id }}");
-        
-        // If there are no FAQs assigned to this specific product, hide the block entirely
-        if (Object.keys(data).length === 0) {
-          container.innerHTML = "";
-          return;
-        }
+        // 3. If no FAQs exist for this product, do nothing
+        if (Object.keys(data).length === 0) return;
 
-        // Show the heading if we have FAQs
-        document.getElementById("faq-heading-{{ block.id }}").style.display = "block";
+        // 4. Build the HTML for the FAQs
+        let faqHtml = `
+          <div class="custom-faq-wrapper" style="max-width: 800px; margin: 40px auto; padding: 20px; clear: both;">
+            <h2 style="text-align: center; margin-bottom: 20px;">Frequently Asked Questions</h2>
+        `;
 
-        let html = "";
         for (const [title, questions] of Object.entries(data)) {
-          html += `<div style="margin-bottom: 20px;">
+          faqHtml += `<div style="margin-bottom: 20px;">
                         <h3 style="margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">${title}</h3>`;
           
           questions.forEach(q => {
-            html += `<details style="margin-bottom: 10px; background: #f9f9f9; padding: 10px; border-radius: 5px;">
-                       <summary style="font-weight: bold; cursor: pointer;">${q.question}</summary>
-                       <p style="margin-top: 10px; color: #555;">${q.answer}</p>
-                     </details>`;
+            faqHtml += `<details style="margin-bottom: 10px; background: #f9f9f9; padding: 10px; border-radius: 5px;">
+                          <summary style="font-weight: bold; cursor: pointer;">${q.question}</summary>
+                          <p style="margin-top: 10px; color: #555;">${q.answer}</p>
+                        </details>`;
           });
-          
-          html += `</div>`;
+          faqHtml += `</div>`;
         }
-        container.innerHTML = html;
+        faqHtml += `</div>`;
+
+        // 5. Inject the HTML into the page automatically
+        // This looks for standard Shopify product containers to attach to.
+        const productInfoContainer = document.querySelector('.product__info-wrapper') || 
+                                     document.querySelector('.product-single__meta') || 
+                                     document.querySelector('main');
+        
+        if (productInfoContainer) {
+          // Injects the FAQ block right after the product info container
+          productInfoContainer.insertAdjacentHTML('afterend', faqHtml);
+        }
       })
       .catch(error => console.error("Error loading FAQs:", error));
   });
@@ -53,25 +51,8 @@
 
 {% schema %}
 {
-  "name": "Product FAQs",
-  "target": "section",
-  "settings": [
-    {
-      "type": "text",
-      "id": "heading",
-      "label": "Heading",
-      "default": "Frequently Asked Questions"
-    },
-    {
-      "type": "select",
-      "id": "heading_align",
-      "label": "Heading Alignment",
-      "options": [
-        { "value": "left", "label": "Left" },
-        { "value": "center", "label": "Center" }
-      ],
-      "default": "center"
-    }
-  ]
+  "name": "Auto FAQ Injector",
+  "target": "body",
+  "settings": []
 }
 {% endschema %}
