@@ -1,17 +1,25 @@
 {% if request.page_type == 'product' %}
 <script>
   document.addEventListener("DOMContentLoaded", function() {
+    console.log("FAQ App Embed: Script started"); // Helps us debug in the browser console
+
     // 1. Get the current product ID
     const currentProductId = "gid://shopify/Product/{{ product.id }}";
+    console.log("FAQ App Embed: Checking product ID", currentProductId);
     
-    // 2. Fetch the FAQs (Update this URL to your live/Vercel URL)
+    // 2. Fetch the FAQs (Make sure this URL matches your actual live/Vercel API URL)
     const apiUrl = `https://shopify-theme-xi.vercel.app/api/faqs?productId=${encodeURIComponent(currentProductId)}`; 
 
     fetch(apiUrl)
       .then(response => response.json())
       .then(data => {
         // 3. If no FAQs exist for this product, do nothing
-        if (Object.keys(data).length === 0) return;
+        if (Object.keys(data).length === 0) {
+          console.log("FAQ App Embed: No FAQs assigned to this product. Staying hidden.");
+          return;
+        }
+
+        console.log("FAQ App Embed: Found FAQs, building HTML...");
 
         // 4. Build the HTML for the FAQs
         let faqHtml = `
@@ -33,18 +41,28 @@
         }
         faqHtml += `</div>`;
 
-        // 5. Inject the HTML into the page automatically
-        // This looks for standard Shopify product containers to attach to.
-        const productInfoContainer = document.querySelector('.product__info-wrapper') || 
-                                     document.querySelector('.product-single__meta') || 
-                                     document.querySelector('main');
+        // 5. AUTO-INJECT THE HTML INTO THE PAGE
+        // We look for standard Shopify product containers
+        const targetContainer = document.querySelector('.product__info-wrapper') || 
+                                document.querySelector('.product-single__meta') || 
+                                document.querySelector('.product__description') ||
+                                document.querySelector('.product-section');
         
-        if (productInfoContainer) {
-          // Injects the FAQ block right after the product info container
-          productInfoContainer.insertAdjacentHTML('afterend', faqHtml);
+        if (targetContainer) {
+          console.log("FAQ App Embed: Injecting right after the product container.");
+          targetContainer.insertAdjacentHTML('afterend', faqHtml);
+        } else {
+          // Fallback: If we can't find specific classes, attach it to the bottom of the main content
+          const mainArea = document.querySelector('main') || document.querySelector('#MainContent');
+          if (mainArea) {
+             console.log("FAQ App Embed: Specific container not found, injecting at the bottom of the page.");
+             mainArea.insertAdjacentHTML('beforeend', faqHtml);
+          } else {
+             console.error("FAQ App Embed: Could not find any suitable area to inject the FAQs on this theme.");
+          }
         }
       })
-      .catch(error => console.error("Error loading FAQs:", error));
+      .catch(error => console.error("FAQ App Embed: Error loading APIs:", error));
   });
 </script>
 {% endif %}
