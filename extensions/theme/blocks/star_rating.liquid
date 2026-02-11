@@ -14,7 +14,7 @@
     const currentProductId = "gid://shopify/Product/{{ product.id }}";
     
     // REPLACE YOUR_APP_URL with your actual ngrok/cloudflare URL
-    const apiUrl = `YOUR_APP_URL/api/faqs?productId=${encodeURIComponent(currentProductId)}`; 
+    const apiUrl = `https://shopify-theme-xi.vercel.app/api/faqs?productId=${encodeURIComponent(currentProductId)}`; 
 
     fetch(apiUrl)
       .then(response => response.json())
