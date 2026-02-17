@@ -1,62 +1,74 @@
 {% if request.page_type == 'product' %}
 <style>
-  .faq-app-wrapper {
-    max-width: 800px;
-    margin: 60px auto;
-    padding: 0 20px;
+  .faq-app-full-width-section {
+    width: 100%;
+    margin: 80px 0;
+    padding: 60px 0;
+    background-color: #ffffff; /* Change this if you want a subtle background color */
     clear: both;
-    font-family: inherit;
+    display: block;
   }
+
+  .faq-app-container {
+    /* This keeps the text from hitting the very edge of the screen */
+    width: 100%;
+    max-width: 1200px; 
+    margin: 0 auto;
+    padding: 0 4%;
+    box-sizing: border-box;
+  }
+
   .faq-app-title {
     text-align: center;
-    font-size: 1.8rem;
-    margin-bottom: 40px;
+    font-size: 2rem;
+    margin-bottom: 50px;
     font-weight: 600;
+    letter-spacing: -0.02em;
   }
+
   .faq-app-list {
     border-top: 1px solid #e1e3e5;
   }
+
   .faq-app-item {
     border-bottom: 1px solid #e1e3e5;
   }
-  .faq-app-details {
-    padding: 0;
-  }
+
   .faq-app-summary {
     list-style: none;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 20px 0;
+    padding: 25px 0;
     font-weight: 500;
-    font-size: 16px;
+    font-size: 18px;
     cursor: pointer;
-    transition: color 0.2s ease;
   }
-  .faq-app-summary::-webkit-details-marker {
-    display: none;
-  }
-  .faq-app-summary:hover {
-    color: #5c5f62;
-  }
+
+  .faq-app-summary::-webkit-details-marker { display: none; }
+
   .faq-app-summary:after {
     content: '+';
-    font-size: 20px;
+    font-size: 24px;
     color: #6d7175;
     font-weight: 300;
   }
+
   .faq-app-details[open] .faq-app-summary:after {
     content: '−';
   }
+
   .faq-app-content {
-    padding: 0 0 20px 0;
+    padding: 0 0 30px 0;
     color: #5c5f62;
-    line-height: 1.6;
-    font-size: 15px;
-    animation: faqFadeIn 0.3s ease-out;
+    line-height: 1.8;
+    font-size: 16px;
+    max-width: 900px; /* Keeps the answer readable on giant screens */
+    animation: faqFadeIn 0.4s ease-out;
   }
+
   @keyframes faqFadeIn {
-    from { opacity: 0; transform: translateY(-5px); }
+    from { opacity: 0; transform: translateY(-10px); }
     to { opacity: 1; transform: translateY(0); }
   }
 </style>
@@ -71,14 +83,13 @@
       .then(data => {
         if (Object.keys(data).length === 0) return;
 
-        // Start building the HTML
         let faqHtml = `
-          <div class="faq-app-wrapper">
-            <h2 class="faq-app-title">Frequently Asked Questions</h2>
-            <div class="faq-app-list">
+          <div class="faq-app-full-width-section">
+            <div class="faq-app-container">
+              <h2 class="faq-app-title">Frequently Asked Questions</h2>
+              <div class="faq-app-list">
         `;
 
-        // Flatten the grouped data to ignore the Set Titles
         Object.values(data).forEach(questions => {
           questions.forEach(q => {
             faqHtml += `
@@ -92,19 +103,19 @@
           });
         });
 
-        faqHtml += `</div></div>`;
+        faqHtml += `</div></div></div>`;
 
-        // Logic to find injection point
-        const target = document.querySelector('.product__info-wrapper') || 
-                       document.querySelector('.product-single__meta') || 
-                       document.querySelector('.product__description') ||
-                       document.querySelector('#MainContent');
+        // To go FULL WIDTH, we inject it into the main content area 
+        // rather than the product info sidebar.
+        const mainArea = document.querySelector('main') || 
+                         document.querySelector('#MainContent') || 
+                         document.querySelector('.main-content');
 
-        if (target) {
-          target.insertAdjacentHTML('afterend', faqHtml);
+        if (mainArea) {
+          mainArea.insertAdjacentHTML('beforeend', faqHtml);
         }
       })
-      .catch(error => console.error("FAQ App Embed Error:", error));
+      .catch(error => console.error("FAQ App Error:", error));
   });
 </script>
 {% endif %}
