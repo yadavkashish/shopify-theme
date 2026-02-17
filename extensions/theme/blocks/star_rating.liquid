@@ -8,7 +8,7 @@
     console.log("FAQ App Embed: Checking product ID", currentProductId);
     
     // 2. Fetch the FAQs (Make sure this URL matches your actual live/Vercel API URL)
-    const apiUrl = `https://shopify-theme-xi.vercel.app/api/faqs?productId=${encodeURIComponent(currentProductId)}`;
+    const apiUrl = `https://themee-xi.vercel.app/api/faqs?productId=${encodeURIComponent(currentProductId)}`;
 
     fetch(apiUrl)
       .then(response => response.json())

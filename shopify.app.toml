@@ -2,7 +2,7 @@
 
 client_id = "eb6bda35e58900d06befa08e2af7b6d5"
 name = " themeSelector"
-application_url = "https://shopify-theme-xi.vercel.app"
+application_url = "https://themee-xi.vercel.app"
 embedded = true
 
 [build]
@@ -25,4 +25,4 @@ api_version = "2026-04"
 scopes = "write_products"
 
 [auth]
-redirect_urls = [ "https://shopify-theme-xi.vercel.app" ]
+redirect_urls = [ "https://themee-xi.vercel.app" ]
