@@ -1,68 +1,110 @@
 {% if request.page_type == 'product' %}
+<style>
+  .faq-app-wrapper {
+    max-width: 800px;
+    margin: 60px auto;
+    padding: 0 20px;
+    clear: both;
+    font-family: inherit;
+  }
+  .faq-app-title {
+    text-align: center;
+    font-size: 1.8rem;
+    margin-bottom: 40px;
+    font-weight: 600;
+  }
+  .faq-app-list {
+    border-top: 1px solid #e1e3e5;
+  }
+  .faq-app-item {
+    border-bottom: 1px solid #e1e3e5;
+  }
+  .faq-app-details {
+    padding: 0;
+  }
+  .faq-app-summary {
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 0;
+    font-weight: 500;
+    font-size: 16px;
+    cursor: pointer;
+    transition: color 0.2s ease;
+  }
+  .faq-app-summary::-webkit-details-marker {
+    display: none;
+  }
+  .faq-app-summary:hover {
+    color: #5c5f62;
+  }
+  .faq-app-summary:after {
+    content: '+';
+    font-size: 20px;
+    color: #6d7175;
+    font-weight: 300;
+  }
+  .faq-app-details[open] .faq-app-summary:after {
+    content: '−';
+  }
+  .faq-app-content {
+    padding: 0 0 20px 0;
+    color: #5c5f62;
+    line-height: 1.6;
+    font-size: 15px;
+    animation: faqFadeIn 0.3s ease-out;
+  }
+  @keyframes faqFadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+
 <script>
   document.addEventListener("DOMContentLoaded", function() {
-    console.log("FAQ App Embed: Script started"); // Helps us debug in the browser console
-
-    // 1. Get the current product ID
     const currentProductId = "gid://shopify/Product/{{ product.id }}";
-    console.log("FAQ App Embed: Checking product ID", currentProductId);
-    
-    // 2. Fetch the FAQs (Make sure this URL matches your actual live/Vercel API URL)
     const apiUrl = `https://themee-xi.vercel.app/api/faqs?productId=${encodeURIComponent(currentProductId)}`;
 
     fetch(apiUrl)
       .then(response => response.json())
       .then(data => {
-        // 3. If no FAQs exist for this product, do nothing
-        if (Object.keys(data).length === 0) {
-          console.log("FAQ App Embed: No FAQs assigned to this product. Staying hidden.");
-          return;
-        }
+        if (Object.keys(data).length === 0) return;
 
-        console.log("FAQ App Embed: Found FAQs, building HTML...");
-
-        // 4. Build the HTML for the FAQs
+        // Start building the HTML
         let faqHtml = `
-          <div class="custom-faq-wrapper" style="max-width: 800px; margin: 40px auto; padding: 20px; clear: both;">
-            <h2 style="text-align: center; margin-bottom: 20px;">Frequently Asked Questions</h2>
+          <div class="faq-app-wrapper">
+            <h2 class="faq-app-title">Frequently Asked Questions</h2>
+            <div class="faq-app-list">
         `;
 
-        for (const [title, questions] of Object.entries(data)) {
-          faqHtml += `<div style="margin-bottom: 20px;">
-                        <h3 style="margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">${title}</h3>`;
-          
+        // Flatten the grouped data to ignore the Set Titles
+        Object.values(data).forEach(questions => {
           questions.forEach(q => {
-            faqHtml += `<details style="margin-bottom: 10px; background: #f9f9f9; padding: 10px; border-radius: 5px;">
-                          <summary style="font-weight: bold; cursor: pointer;">${q.question}</summary>
-                          <p style="margin-top: 10px; color: #555;">${q.answer}</p>
-                        </details>`;
+            faqHtml += `
+              <div class="faq-app-item">
+                <details class="faq-app-details">
+                  <summary class="faq-app-summary">${q.question}</summary>
+                  <div class="faq-app-content">${q.answer}</div>
+                </details>
+              </div>
+            `;
           });
-          faqHtml += `</div>`;
-        }
-        faqHtml += `</div>`;
+        });
 
-        // 5. AUTO-INJECT THE HTML INTO THE PAGE
-        // We look for standard Shopify product containers
-        const targetContainer = document.querySelector('.product__info-wrapper') || 
-                                document.querySelector('.product-single__meta') || 
-                                document.querySelector('.product__description') ||
-                                document.querySelector('.product-section');
-        
-        if (targetContainer) {
-          console.log("FAQ App Embed: Injecting right after the product container.");
-          targetContainer.insertAdjacentHTML('afterend', faqHtml);
-        } else {
-          // Fallback: If we can't find specific classes, attach it to the bottom of the main content
-          const mainArea = document.querySelector('main') || document.querySelector('#MainContent');
-          if (mainArea) {
-             console.log("FAQ App Embed: Specific container not found, injecting at the bottom of the page.");
-             mainArea.insertAdjacentHTML('beforeend', faqHtml);
-          } else {
-             console.error("FAQ App Embed: Could not find any suitable area to inject the FAQs on this theme.");
-          }
+        faqHtml += `</div></div>`;
+
+        // Logic to find injection point
+        const target = document.querySelector('.product__info-wrapper') || 
+                       document.querySelector('.product-single__meta') || 
+                       document.querySelector('.product__description') ||
+                       document.querySelector('#MainContent');
+
+        if (target) {
+          target.insertAdjacentHTML('afterend', faqHtml);
         }
       })
-      .catch(error => console.error("FAQ App Embed: Error loading APIs:", error));
+      .catch(error => console.error("FAQ App Embed Error:", error));
   });
 </script>
 {% endif %}
