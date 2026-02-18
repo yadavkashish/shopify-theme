@@ -1,12 +1,86 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
+import { json } from "@remix-run/node";
+import { useLoaderData, useSubmit, useNavigation } from "@remix-run/react";
+import db from "../db.server"; // Ensure this path matches your project structure
 
-// --- MOCK DATA ---
-const INITIAL_FAQS = [
-  { id: 1, title: "Shipping Info", question: "How long does shipping take?", answer: "Usually 3-5 business days depending on your location." },
-  { id: 2, title: "Shipping Info", question: "Do you ship internationally?", answer: "Yes, we ship to over 50 countries worldwide." },
-  { id: 3, title: "Returns", question: "What is the return policy?", answer: "We offer a 30-day money back guarantee on all orders." },
-];
+// --- 1. BACKEND: DATA LOADER (GET) ---
+export const loader = async ({ request }) => {
+  // 1. Fetch all FAQs
+  const faqs = await db.fAQ.findMany();
 
+  // 2. Fetch Settings (or default)
+  const shop = "my-store.myshopify.com"; // In real app, get from session
+  let settings = await db.fAQSettings.findUnique({ where: { shop } });
+  
+  if (!settings) {
+    settings = { style: "accordion", color: "#008060", radius: 8 };
+  }
+
+  return json({ faqs, settings });
+};
+
+// --- 2. BACKEND: ACTION (POST/PUT/DELETE) ---
+export const action = async ({ request }) => {
+  const formData = await request.formData();
+  const intent = formData.get("intent");
+  const shop = "my-store.myshopify.com"; // In real app, get from session
+
+  // A. SAVE THEME SETTINGS
+  if (intent === "saveSettings") {
+    const style = formData.get("style");
+    const color = formData.get("color");
+    const radius = parseInt(formData.get("radius"));
+
+    await db.fAQSettings.upsert({
+      where: { shop },
+      update: { style, color, radius },
+      create: { shop, style, color, radius }
+    });
+    return json({ status: "success", message: "Storefront design updated!" });
+  }
+
+  // B. SAVE FAQ SET (CREATE OR UPDATE)
+  if (intent === "saveFaqSet") {
+    const title = formData.get("title");
+    const questionsString = formData.get("questions"); // Passed as JSON string
+    const questions = JSON.parse(questionsString);
+    const idsToDeleteString = formData.get("idsToDelete");
+    const idsToDelete = idsToDeleteString ? JSON.parse(idsToDeleteString) : [];
+
+    // 1. Delete removed questions
+    if (idsToDelete.length > 0) {
+      await db.fAQ.deleteMany({ where: { id: { in: idsToDelete } } });
+    }
+
+    // 2. Upsert questions (Update existing, Create new)
+    for (const q of questions) {
+      if (q.id && !q.id.toString().includes("temp")) {
+        // Update existing
+        await db.fAQ.update({
+          where: { id: q.id },
+          data: { title, question: q.question, answer: q.answer }
+        });
+      } else {
+        // Create new
+        await db.fAQ.create({
+          data: { title, question: q.question, answer: q.answer }
+        });
+      }
+    }
+    return json({ status: "success", message: "FAQ Set Saved!" });
+  }
+
+  // C. DELETE ENTIRE SET
+  if (intent === "deleteSet") {
+    const titleToDelete = formData.get("title");
+    await db.fAQ.deleteMany({ where: { title: titleToDelete } });
+    return json({ status: "success", message: "Set Deleted!" });
+  }
+
+  return json({ status: "error" });
+};
+
+// --- UI DATA ---
 const UI_STYLES = [
   { id: 'accordion', label: 'Classic Accordion', desc: 'Standard expandable list' },
   { id: 'grid', label: 'Bento Grid', desc: 'Modern card layout' },
@@ -14,39 +88,20 @@ const UI_STYLES = [
   { id: 'chat', label: 'Support Bot', desc: 'Conversational style' },
 ];
 
-// --- TEMPLATE COMPONENTS (Inline Styles) ---
+// --- TEMPLATE COMPONENTS (Preview Only) ---
 const AccordionTemplate = ({ faqs, config }) => {
-  const [openId, setOpenId] = useState(1);
+  const [openId, setOpenId] = useState(null);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       {faqs.map((faq) => {
         const isOpen = openId === faq.id;
         return (
-          <div key={faq.id} style={{ 
-            border: '1px solid #e1e3e5', 
-            borderRadius: `${config.radius}px`,
-            overflow: 'hidden',
-            backgroundColor: 'white'
-          }}>
-            <button
-              onClick={() => setOpenId(isOpen ? null : faq.id)}
-              style={{
-                width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                padding: '15px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left'
-              }}
-            >
+          <div key={faq.id} style={{ border: '1px solid #e1e3e5', borderRadius: `${config.radius}px`, overflow: 'hidden', backgroundColor: 'white' }}>
+            <button onClick={() => setOpenId(isOpen ? null : faq.id)} style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
               <span style={{ fontWeight: '600', color: '#333' }}>{faq.question}</span>
-              <span style={{ 
-                transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', 
-                transition: 'transform 0.2s',
-                color: config.color 
-              }}>▼</span>
+              <span style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', color: config.color }}>▼</span>
             </button>
-            {isOpen && (
-              <div style={{ padding: '0 15px 15px 15px', color: '#555', lineHeight: '1.5' }}>
-                {faq.answer}
-              </div>
-            )}
+            {isOpen && <div style={{ padding: '0 15px 15px 15px', color: '#555', lineHeight: '1.5' }}>{faq.answer}</div>}
           </div>
         );
       })}
@@ -57,14 +112,7 @@ const AccordionTemplate = ({ faqs, config }) => {
 const GridTemplate = ({ faqs, config }) => (
   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
     {faqs.map((faq) => (
-      <div key={faq.id} style={{ 
-        padding: '20px', 
-        border: '1px solid #e1e3e5', 
-        borderRadius: `${config.radius}px`,
-        backgroundColor: 'white',
-        borderTop: `4px solid ${config.color}`,
-        display: 'flex', flexDirection: 'column'
-      }}>
+      <div key={faq.id} style={{ padding: '20px', border: '1px solid #e1e3e5', borderRadius: `${config.radius}px`, backgroundColor: 'white', borderTop: `4px solid ${config.color}`, display: 'flex', flexDirection: 'column' }}>
         <h3 style={{ margin: '0 0 10px 0', fontSize: '15px', fontWeight: 'bold' }}>{faq.question}</h3>
         <p style={{ margin: 0, color: '#666', fontSize: '13px', lineHeight: '1.4' }}>{faq.answer}</p>
       </div>
@@ -85,39 +133,21 @@ const MinimalTemplate = ({ faqs, config }) => (
 );
 
 const ChatTemplate = ({ faqs, config }) => (
-  <div style={{ 
-    border: '1px solid #e1e3e5', 
-    borderRadius: `${config.radius}px`, 
-    backgroundColor: '#f9fafb',
-    height: '400px', display: 'flex', flexDirection: 'column', overflow: 'hidden'
-  }}>
+  <div style={{ border: '1px solid #e1e3e5', borderRadius: `${config.radius}px`, backgroundColor: '#f9fafb', height: '400px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
     <div style={{ padding: '15px', background: 'white', borderBottom: '1px solid #e1e3e5', display: 'flex', alignItems: 'center', gap: '10px' }}>
       <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: config.color, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>AI</div>
       <span style={{ fontWeight: '600', fontSize: '14px' }}>Support Bot</span>
     </div>
     <div style={{ flex: 1, padding: '15px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      <div style={{ alignSelf: 'flex-start', background: 'white', padding: '10px 15px', borderRadius: '0 15px 15px 15px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', fontSize: '13px' }}>
-        How can I help you today?
-      </div>
+      <div style={{ alignSelf: 'flex-start', background: 'white', padding: '10px 15px', borderRadius: '0 15px 15px 15px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', fontSize: '13px' }}>How can I help you today?</div>
       {faqs.map(faq => (
-        <div key={faq.id} style={{ 
-          alignSelf: 'flex-end', 
-          border: `1px solid ${config.color}`, 
-          color: config.color,
-          padding: '8px 15px', 
-          borderRadius: '15px 15px 0 15px',
-          fontSize: '13px',
-          cursor: 'pointer',
-          background: 'rgba(255,255,255,0.5)'
-        }}>
-          {faq.question}
-        </div>
+        <div key={faq.id} style={{ alignSelf: 'flex-end', border: `1px solid ${config.color}`, color: config.color, padding: '8px 15px', borderRadius: '15px 15px 0 15px', fontSize: '13px', cursor: 'pointer', background: 'rgba(255,255,255,0.5)' }}>{faq.question}</div>
       ))}
     </div>
   </div>
 );
 
-// --- MOCK UI COMPONENTS ---
+// --- HELPER COMPONENTS ---
 const SPage = ({ children, heading, primaryAction }) => (
   <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "20px", fontFamily: "-apple-system, BlinkMacSystemFont, 'San Francisco', 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif" }}>
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
@@ -127,103 +157,57 @@ const SPage = ({ children, heading, primaryAction }) => (
     {children}
   </div>
 );
-
 const SButton = ({ children, onClick, variant = "default", tone, loading }) => {
-  let bg = "#fff";
-  let color = "#202223";
-  let border = "1px solid #babfc3";
-  
-  if (variant === "primary") {
-    bg = tone === "critical" ? "#d82c0d" : "#008060";
-    color = "#fff";
-    border = "none";
-  } else if (variant === "plain") {
-    bg = "transparent";
-    border = "none";
-    color = tone === "critical" ? "#d82c0d" : "#005bd3";
-  }
-
+  let bg = "#fff", color = "#202223", border = "1px solid #babfc3";
+  if (variant === "primary") { bg = tone === "critical" ? "#d82c0d" : "#008060"; color = "#fff"; border = "none"; }
+  else if (variant === "plain") { bg = "transparent"; border = "none"; color = tone === "critical" ? "#d82c0d" : "#005bd3"; }
   return (
-    <button 
-      onClick={onClick} 
-      disabled={loading}
-      style={{ 
-        background: bg, color: color, border: border, padding: "8px 16px", borderRadius: "4px", 
-        cursor: loading ? "wait" : "pointer", fontWeight: "500", fontSize: "14px",
-        boxShadow: variant === "primary" ? "0 1px 0 rgba(0,0,0,0.05)" : "none", opacity: loading ? 0.7 : 1
-      }}
-    >
-      {loading ? "Saving..." : children}
+    <button onClick={onClick} disabled={loading} style={{ background: bg, color, border, padding: "8px 16px", borderRadius: "4px", cursor: loading ? "wait" : "pointer", fontWeight: "500", fontSize: "14px", boxShadow: variant === "primary" ? "0 1px 0 rgba(0,0,0,0.05)" : "none", opacity: loading ? 0.7 : 1 }}>
+      {loading ? "Processing..." : children}
     </button>
   );
 };
-
 const SSection = ({ heading, children }) => (
   <div style={{ background: "#fff", borderRadius: "8px", border: "1px solid #e1e3e5", padding: "20px", marginBottom: "20px", boxShadow: "0 0 0 1px rgba(63, 63, 68, 0.05), 0 1px 3px 0 rgba(63, 63, 68, 0.15)" }}>
     {heading && <h3 style={{ fontSize: "16px", fontWeight: "600", marginBottom: "15px", marginTop: 0 }}>{heading}</h3>}
     {children}
   </div>
 );
-
-const SStack = ({ children, direction = "row", gap = "10px" }) => (
-  <div style={{ display: "flex", flexDirection: direction === "block" ? "column" : "row", gap: gap === "large" ? "20px" : gap === "base" ? "10px" : "5px" }}>
-    {children}
-  </div>
-);
-
+const SStack = ({ children, direction = "row", gap = "10px" }) => <div style={{ display: "flex", flexDirection: direction === "block" ? "column" : "row", gap: gap === "large" ? "20px" : gap === "base" ? "10px" : "5px" }}>{children}</div>;
 const SHeading = ({ children }) => <h2 style={{ fontSize: "16px", fontWeight: "600", margin: 0, color: "#202223" }}>{children}</h2>;
 
 // --- MAIN COMPONENT ---
 export default function Index() {
-  // State
-  const [faqs, setFaqs] = useState(INITIAL_FAQS);
-  const [shop] = useState("my-store.myshopify.com");
-  
-  // Settings State (NOW INCLUDES STYLE CONFIG)
-  const [settings, setSettings] = useState({ 
-    style: "accordion", 
-    color: "#008060", 
-    radius: 8 
-  });
-  
-  // Draft Settings (for editing before save)
-  const [draftSettings, setDraftSettings] = useState(settings);
+  // LOAD REAL DATA
+  const { faqs: initialFaqs, settings: initialSettings } = useLoaderData();
+  const submit = useSubmit();
+  const navigation = useNavigation();
+  const isLoading = navigation.state === "submitting";
 
+  // State
+  const [faqs, setFaqs] = useState(initialFaqs);
+  const [settings, setSettings] = useState(initialSettings);
+  const [draftSettings, setDraftSettings] = useState(initialSettings); // For theme editor
+  
   // Navigation & UI State
   const [currentView, setCurrentView] = useState("dashboard");
   const [toastMessage, setToastMessage] = useState(null);
-  const [loading, setLoading] = useState(false);
 
   // Form State
   const [formTitle, setFormTitle] = useState(""); 
   const [formRows, setFormRows] = useState([]);
   const [deletedIds, setDeletedIds] = useState([]); 
 
-  // Helpers
+  // Sync DB data if loader revalidates
+  useEffect(() => {
+    setFaqs(initialFaqs);
+    setSettings(initialSettings);
+  }, [initialFaqs, initialSettings]);
+
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
-
-  // --- NEW: FETCH SETTINGS ON MOUNT ---
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const response = await fetch("/api/settings"); // Make sure this endpoint exists
-        if (response.ok) {
-          const data = await response.json();
-          // Assuming API returns { settings: { ... } }
-          if (data.settings) {
-            setSettings(data.settings);
-            setDraftSettings(data.settings);
-          }
-        }
-      } catch (error) {
-        console.error("Error loading settings:", error);
-      }
-    };
-    fetchSettings();
-  }, []);
 
   const groupedFaqs = faqs.reduce((acc, faq) => {
     const key = faq.title || "Untitled Set";
@@ -233,112 +217,76 @@ export default function Index() {
   }, {});
 
   // --- HANDLERS ---
-  
-  // UPDATED: Save Settings to DB
-  const handleApplyTheme = async () => {
-    setLoading(true);
-    
-    try {
-      const response = await fetch("/api/settings", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          shop: shop, // Pass shop if needed by your backend
-          style: draftSettings.style,
-          color: draftSettings.color,
-          radius: draftSettings.radius
-        }),
-      });
 
-      if (response.ok) {
-        setSettings(draftSettings); // Save draft to actual state
-        showToast("Storefront Design Updated!");
-        setCurrentView("dashboard");
-      } else {
-        showToast("Failed to save settings.");
-      }
-    } catch (error) {
-      console.error(error);
-      showToast("Error connecting to server.");
-    } finally {
-      setLoading(false);
-    }
+  // 1. Save Theme Settings
+  const handleApplyTheme = () => {
+    const formData = new FormData();
+    formData.append("intent", "saveSettings");
+    formData.append("style", draftSettings.style);
+    formData.append("color", draftSettings.color);
+    formData.append("radius", draftSettings.radius);
+
+    submit(formData, { method: "post" });
+    
+    // Optimistic Update
+    setSettings(draftSettings);
+    showToast("Storefront Design Updated!");
+    setCurrentView("dashboard");
   };
 
+  // 2. Save FAQ Set
   const handleSaveFaqs = () => {
     if (!formTitle.trim()) {
       showToast("Please enter a Group Title");
       return;
     }
-    setLoading(true);
-    // Note: You should also update this to POST to an API eventually
-    setTimeout(() => {
-      let updatedFaqs = [...faqs];
-      if (deletedIds.length > 0) updatedFaqs = updatedFaqs.filter(f => !deletedIds.includes(f.id));
-      
-      const newEntries = [];
-      formRows.forEach(row => {
-        if (row.id) {
-          const index = updatedFaqs.findIndex(f => f.id === row.id);
-          if (index !== -1) updatedFaqs[index] = { ...updatedFaqs[index], title: formTitle, question: row.question, answer: row.answer };
-        } else {
-          newEntries.push({ id: Math.random(), title: formTitle, question: row.question, answer: row.answer });
-        }
-      });
-      setFaqs([...updatedFaqs, ...newEntries]);
-      showToast("FAQ Set Saved!");
-      setCurrentView("faq_list");
-      setLoading(false);
-    }, 800);
+
+    const formData = new FormData();
+    formData.append("intent", "saveFaqSet");
+    formData.append("title", formTitle);
+    formData.append("questions", JSON.stringify(formRows)); // Send as stringified JSON
+    formData.append("idsToDelete", JSON.stringify(deletedIds));
+
+    submit(formData, { method: "post" });
+
+    showToast("FAQ Set Saved!");
+    setCurrentView("faq_list");
   };
 
+  // 3. Delete FAQ Set
   const handleDeleteSet = () => {
-    if (window.confirm("Delete this set?")) {
-      setLoading(true);
-      setTimeout(() => {
-        setFaqs(faqs.filter(f => f.title !== formTitle));
-        showToast("Set Deleted!");
-        setCurrentView("faq_list");
-        setLoading(false);
-      }, 600);
+    if (window.confirm("Delete this entire set?")) {
+      const formData = new FormData();
+      formData.append("intent", "deleteSet");
+      formData.append("title", formTitle);
+      
+      submit(formData, { method: "post" });
+      
+      showToast("Set Deleted!");
+      setCurrentView("faq_list");
     }
   };
 
   // --- RENDER VIEWS ---
 
-  // 1. THEME EDITOR (UPDATED WITH UI & STYLE OPTIONS)
+  // VIEW 1: THEME EDITOR
   if (currentView === "theme_editor") {
+    // Generate preview data from existing FAQs or dummies if empty
+    const previewFaqs = faqs.length > 0 ? faqs.slice(0,3) : [
+       { id: 1, question: "Example Question?", answer: "This is how your answer will look." },
+       { id: 2, question: "Is this customizable?", answer: "Yes! Change colors and styles on the left." }
+    ];
+
     return (
-      <SPage 
-        heading="Customize Appearance"
-        primaryAction={<SButton onClick={() => setCurrentView("dashboard")}>Cancel</SButton>}
-      >
+      <SPage heading="Customize Appearance" primaryAction={<SButton onClick={() => setCurrentView("dashboard")}>Cancel</SButton>}>
          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-            
             {/* Left Column: Controls */}
             <div>
               <SSection heading="1. Choose Layout">
                  <div style={{ display: 'grid', gap: '10px' }}>
                     {UI_STYLES.map(style => (
-                      <div 
-                        key={style.id}
-                        onClick={() => setDraftSettings({...draftSettings, style: style.id})}
-                        style={{ 
-                          padding: '12px', 
-                          border: draftSettings.style === style.id ? '2px solid #005bd3' : '1px solid #e1e3e5',
-                          borderRadius: '8px',
-                          cursor: 'pointer',
-                          background: draftSettings.style === style.id ? '#f0f8ff' : 'white',
-                          display: 'flex', alignItems: 'center', gap: '10px'
-                        }}
-                      >
-                          <div style={{ 
-                           width: '16px', height: '16px', borderRadius: '50%', border: '1px solid #ccc',
-                           background: draftSettings.style === style.id ? '#005bd3' : 'white',
-                           display: 'flex', alignItems: 'center', justifyContent: 'center'
-                          }}>
+                      <div key={style.id} onClick={() => setDraftSettings({...draftSettings, style: style.id})} style={{ padding: '12px', border: draftSettings.style === style.id ? '2px solid #005bd3' : '1px solid #e1e3e5', borderRadius: '8px', cursor: 'pointer', background: draftSettings.style === style.id ? '#f0f8ff' : 'white', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div style={{ width: '16px', height: '16px', borderRadius: '50%', border: '1px solid #ccc', background: draftSettings.style === style.id ? '#005bd3' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                              {draftSettings.style === style.id && <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'white' }} />}
                           </div>
                           <div>
@@ -349,64 +297,31 @@ export default function Index() {
                     ))}
                  </div>
               </SSection>
-
               <SSection heading="2. Styling">
                  <div style={{ marginBottom: '15px' }}>
                     <label style={labelStyle}>Accent Color</label>
                     <div style={{ display: 'flex', gap: '10px', marginTop: '5px' }}>
-                        <input 
-                          type="color" 
-                          value={draftSettings.color}
-                          onChange={(e) => setDraftSettings({...draftSettings, color: e.target.value})}
-                          style={{ width: '50px', height: '40px', border: '1px solid #ccc', padding: 0, borderRadius: '4px', cursor: 'pointer' }}
-                        />
-                        <span style={{ padding: '10px', background: '#f4f4f4', borderRadius: '4px', fontSize: '14px', fontFamily: 'monospace' }}>
-                          {draftSettings.color}
-                        </span>
+                       <input type="color" value={draftSettings.color} onChange={(e) => setDraftSettings({...draftSettings, color: e.target.value})} style={{ width: '50px', height: '40px', border: '1px solid #ccc', padding: 0, borderRadius: '4px', cursor: 'pointer' }} />
+                       <span style={{ padding: '10px', background: '#f4f4f4', borderRadius: '4px', fontSize: '14px', fontFamily: 'monospace' }}>{draftSettings.color}</span>
                     </div>
                  </div>
-
                  <div>
                     <label style={labelStyle}>Border Radius: {draftSettings.radius}px</label>
-                    <input 
-                      type="range" 
-                      min="0" max="24" 
-                      value={draftSettings.radius}
-                      onChange={(e) => setDraftSettings({...draftSettings, radius: parseInt(e.target.value)})}
-                      style={{ width: '100%', cursor: 'pointer' }}
-                    />
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#999' }}>
-                       <span>Square</span>
-                       <span>Round</span>
-                    </div>
+                    <input type="range" min="0" max="24" value={draftSettings.radius} onChange={(e) => setDraftSettings({...draftSettings, radius: parseInt(e.target.value)})} style={{ width: '100%', cursor: 'pointer' }} />
                  </div>
               </SSection>
-              
               <div style={{ marginTop: '20px' }}>
-                 <SButton variant="primary" onClick={handleApplyTheme} loading={loading}>Save & Publish</SButton>
+                 <SButton variant="primary" onClick={handleApplyTheme} loading={isLoading}>Save & Publish</SButton>
               </div>
             </div>
-
             {/* Right Column: Live Preview */}
             <div>
-               <div style={{ 
-                 position: 'sticky', top: '20px', 
-                 background: '#f1f2f3', 
-                 border: '1px solid #dcdcdc', 
-                 borderRadius: '12px', 
-                 padding: '20px',
-                 minHeight: '500px'
-               }}>
-                  <div style={{ marginBottom: '20px', textAlign: 'center', color: '#666', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                     Live Preview
-                  </div>
-                  
-                  {/* Render the selected template dynamically */}
-                  {draftSettings.style === 'accordion' && <AccordionTemplate faqs={faqs} config={draftSettings} />}
-                  {draftSettings.style === 'grid' && <GridTemplate faqs={faqs} config={draftSettings} />}
-                  {draftSettings.style === 'minimal' && <MinimalTemplate faqs={faqs} config={draftSettings} />}
-                  {draftSettings.style === 'chat' && <ChatTemplate faqs={faqs} config={draftSettings} />}
-                  
+               <div style={{ position: 'sticky', top: '20px', background: '#f1f2f3', border: '1px solid #dcdcdc', borderRadius: '12px', padding: '20px', minHeight: '500px' }}>
+                  <div style={{ marginBottom: '20px', textAlign: 'center', color: '#666', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>Live Preview</div>
+                  {draftSettings.style === 'accordion' && <AccordionTemplate faqs={previewFaqs} config={draftSettings} />}
+                  {draftSettings.style === 'grid' && <GridTemplate faqs={previewFaqs} config={draftSettings} />}
+                  {draftSettings.style === 'minimal' && <MinimalTemplate faqs={previewFaqs} config={draftSettings} />}
+                  {draftSettings.style === 'chat' && <ChatTemplate faqs={previewFaqs} config={draftSettings} />}
                </div>
             </div>
          </div>
@@ -414,9 +329,9 @@ export default function Index() {
     );
   }
 
-  // 2. FAQ EDITOR
+  // VIEW 2: FAQ EDITOR
   if (currentView === "faq_editor") {
-    const isEditing = formRows.some(row => row.id);
+    const isEditing = formRows.some(row => row.id && !row.id.toString().includes("temp"));
     return (
       <SPage heading="Manage FAQ Set" primaryAction={<SButton onClick={() => setCurrentView("faq_list")}>Cancel</SButton>}>
         <div style={{ maxWidth: "700px", margin: "0 auto" }}>
@@ -437,21 +352,17 @@ export default function Index() {
                     </div>
                   )}
                   <SStack direction="block" gap="base">
-                    <div><label style={labelStyle}>Question</label><input type="text" value={row.question} onChange={(e) => {
-                       const n = [...formRows]; n[index].question = e.target.value; setFormRows(n);
-                    }} style={inputStyle} /></div>
-                    <div><label style={labelStyle}>Answer</label><textarea value={row.answer} onChange={(e) => {
-                       const n = [...formRows]; n[index].answer = e.target.value; setFormRows(n);
-                    }} rows="4" style={{...inputStyle, resize: "vertical"}} /></div>
+                    <div><label style={labelStyle}>Question</label><input type="text" value={row.question} onChange={(e) => { const n = [...formRows]; n[index].question = e.target.value; setFormRows(n); }} style={inputStyle} /></div>
+                    <div><label style={labelStyle}>Answer</label><textarea value={row.answer} onChange={(e) => { const n = [...formRows]; n[index].answer = e.target.value; setFormRows(n); }} rows="4" style={{...inputStyle, resize: "vertical"}} /></div>
                   </SStack>
                 </div>
               </SSection>
             ))}
-            <div style={addButtonStyle} onClick={() => setFormRows([...formRows, { question: "", answer: "" }])}>
+            <div style={addButtonStyle} onClick={() => setFormRows([...formRows, { id: "temp_" + Date.now(), question: "", answer: "" }])}>
                <span style={{ fontWeight: "600", color: "#005bd3" }}>+ Add question</span>
             </div>
             <div style={{ marginTop: "20px", display: "flex", justifyContent: "space-between" }}>
-              <SButton variant="primary" onClick={handleSaveFaqs} loading={loading}>Save Set</SButton>
+              <SButton variant="primary" onClick={handleSaveFaqs} loading={isLoading}>Save Set</SButton>
               {isEditing && <SButton variant="primary" tone="critical" onClick={(e) => { e.preventDefault(); handleDeleteSet(); }}>Delete Set</SButton>}
             </div>
           </SStack>
@@ -460,14 +371,14 @@ export default function Index() {
     );
   }
 
-  // 3. FAQ LIST
+  // VIEW 3: FAQ LIST
   if (currentView === "faq_list") {
     return (
       <SPage heading="FAQ Manager" primaryAction={<SButton onClick={() => setCurrentView("dashboard")}>Back to Dashboard</SButton>}>
         <SSection heading="Your FAQ Sets">
            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
               <p style={{ color: "#666", margin: 0, fontSize: "14px" }}>Manage groups of questions.</p>
-              <SButton variant="primary" onClick={() => { setFormTitle(""); setFormRows([{ question: "", answer: "" }]); setDeletedIds([]); setCurrentView("faq_editor"); }}>+ Create New Set</SButton>
+              <SButton variant="primary" onClick={() => { setFormTitle(""); setFormRows([{ id: "temp_init", question: "", answer: "" }]); setDeletedIds([]); setCurrentView("faq_editor"); }}>+ Create New Set</SButton>
            </div>
            <SStack direction="block" gap="base">
              {Object.entries(groupedFaqs).map(([title, faqList]) => (
@@ -475,7 +386,7 @@ export default function Index() {
                  <div><h3 style={{ margin: "0 0 5px 0", fontSize: "16px", fontWeight: "600" }}>{title}</h3><p style={{ margin: 0, color: "#666", fontSize: "14px" }}>{faqList.length} questions</p></div>
                  <div style={{ display: "flex", gap: "10px" }}>
                    <SButton onClick={() => { 
-                      if(window.confirm(`Simulate assign "${title}"?`)) showToast("Assigned!"); 
+                      if(window.confirm(`To assign this set, please use the 'ProductFAQMapping' logic or simply manage content here.`)) showToast("Info only"); 
                    }}>Assign</SButton>
                    <SButton onClick={() => { setFormTitle(title === "Untitled Set" ? "" : title); setFormRows(faqList.map(f => ({...f}))); setDeletedIds([]); setCurrentView("faq_editor"); }}>Edit</SButton>
                  </div>
@@ -488,18 +399,18 @@ export default function Index() {
     );
   }
 
-  // 4. DASHBOARD
+  // VIEW 4: DASHBOARD
   return (
     <>
       {toastMessage && <div style={toastStyle}>{toastMessage}</div>}
       <SPage heading="App Dashboard">
         <div style={{ background: "#f0f8ff", border: "1px solid #cce0ff", borderRadius: "8px", padding: "16px 20px", marginTop: "20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div><h3 style={{ margin: "0 0 4px 0", fontSize: "15px", fontWeight: "600", color: "#004085" }}>🚀 Enable on Storefront</h3><p style={{ margin: 0, color: "#004085", fontSize: "14px" }}>Turn on App Embed.</p></div>
-          <SButton onClick={() => window.open(`https://${shop}`, '_blank')}>Open Theme Editor</SButton>
+          <SButton onClick={() => window.open(`https://admin.shopify.com`, '_blank')}>Open Theme Editor</SButton>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "20px", marginTop: "20px" }}>
           <div style={cardStyle}><div><SHeading>❓ Manage FAQs</SHeading><p style={cardTextStyle}>Add, edit, or delete question sets.</p></div><SButton onClick={() => setCurrentView("faq_list")}>Edit Content</SButton></div>
-          <div style={cardStyle}><div><SHeading>🎨 Customize Look</SHeading><p style={cardTextStyle}>Choose layout style (Accordion, Grid, etc.) and colors.</p></div><SButton onClick={() => { setDraftSettings(settings); setCurrentView("theme_editor"); }}>Open Designer</SButton></div>
+          <div style={cardStyle}><div><SHeading>🎨 Customize Look</SHeading><p style={cardTextStyle}>Current: {settings.style.charAt(0).toUpperCase() + settings.style.slice(1)} style.</p></div><SButton onClick={() => { setDraftSettings(settings); setCurrentView("theme_editor"); }}>Open Designer</SButton></div>
           <div style={cardStyle}><div><SHeading>📊 Analytics</SHeading><p style={cardTextStyle}>View engagement stats.</p></div><SButton variant="plain" onClick={() => showToast("Coming soon!")}>View Reports</SButton></div>
         </div>
       </SPage>

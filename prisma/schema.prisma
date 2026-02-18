@@ -43,12 +43,12 @@ model FAQ {
  
 }
 model FAQSettings {
-  id           String   @id @default(uuid())
-  shop         String   @unique
-  style        String   @default("accordion") // 'accordion', 'grid', 'minimal', 'chat'
-  color        String   @default("#008060")
-  radius       Int      @default(8)
-  updatedAt    DateTime @updatedAt
+  id        String   @id @default(uuid())
+  shop      String   @unique
+  // New visual fields
+  style     String   @default("accordion") // 'accordion', 'grid', 'minimal', 'chat'
+  color     String   @default("#008060")
+  radius    Int      @default(8)
 }
 
 // Add this below your existing FAQ model

@@ -1,141 +1,204 @@
 {% if request.page_type == 'product' %}
 
-<div id="faq-app-root" class="faq-app-full-width-section" style="display:none;">
-  <div class="faq-app-container">
-    <h2 class="faq-app-title">Frequently Asked Questions</h2>
-    <div id="faq-app-content"></div>
-  </div>
-</div>
+<div id="faq-app-root"></div>
 
 <style>
-  /* --- CORE LAYOUT --- */
-  .faq-app-full-width-section { width: 100%; margin: 60px 0; padding: 40px 0; background-color: #ffffff; display: block; clear: both; }
-  .faq-app-container { width: 100%; max-width: 1000px; margin: 0 auto; padding: 0 20px; box-sizing: border-box; }
-  .faq-app-title { text-align: center; font-size: 26px; margin-bottom: 40px; font-weight: 700; color: #202223; }
-  
-  /* --- TEMPLATE: ACCORDION --- */
-  .faq-layout-accordion .faq-item { border: 1px solid #e1e3e5; margin-bottom: 10px; background: #fff; overflow: hidden; }
-  .faq-layout-accordion summary { padding: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 600; list-style: none; }
-  .faq-layout-accordion summary::-webkit-details-marker { display: none; }
-  .faq-layout-accordion summary::after { content: '▼'; color: var(--faq-color); transition: transform 0.2s; }
-  .faq-layout-accordion details[open] summary::after { transform: rotate(180deg); }
-  .faq-layout-accordion .faq-answer { padding: 0 15px 15px; color: #555; line-height: 1.5; }
+  /* Base Container */
+  .faq-app-section {
+    padding: 60px 0;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    font-family: inherit;
+  }
+  .faq-app-title { text-align: center; margin-bottom: 40px; }
 
-  /* --- TEMPLATE: GRID (Bento) --- */
-  .faq-layout-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
-  .faq-layout-grid .faq-item { border: 1px solid #e1e3e5; padding: 20px; background: #fff; border-top: 4px solid var(--faq-color); }
-  .faq-layout-grid h3 { margin: 0 0 10px 0; font-size: 16px; font-weight: bold; }
-  .faq-layout-grid p { margin: 0; color: #666; line-height: 1.4; font-size: 14px; }
+  /* --- STYLE: ACCORDION --- */
+  .faq-style-accordion .faq-item {
+    border: 1px solid #e1e3e5;
+    margin-bottom: 10px;
+    background: white;
+    overflow: hidden;
+  }
+  .faq-style-accordion summary {
+    padding: 15px;
+    cursor: pointer;
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    list-style: none;
+  }
+  .faq-style-accordion summary::-webkit-details-marker { display: none; }
+  .faq-style-accordion .faq-answer {
+    padding: 0 15px 15px;
+    color: #555;
+    line-height: 1.6;
+  }
 
-  /* --- TEMPLATE: MINIMAL --- */
-  .faq-layout-minimal { border-top: 1px solid #e1e3e5; }
-  .faq-layout-minimal .faq-item { border-bottom: 1px solid #e1e3e5; padding: 15px 0; }
-  .faq-layout-minimal h3 { margin: 0 0 5px; font-size: 16px; color: #202223; }
-  .faq-layout-minimal p { margin: 0; color: #666; font-size: 14px; }
-  .faq-layout-minimal .icon { font-size: 20px; color: var(--faq-color); line-height: 1; margin-top: 5px; }
+  /* --- STYLE: GRID --- */
+  .faq-style-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+  }
+  .faq-style-grid .faq-card {
+    padding: 20px;
+    border: 1px solid #e1e3e5;
+    background: white;
+    border-top-width: 4px; /* Color set by JS */
+    border-top-style: solid;
+  }
 
-  /* --- TEMPLATE: CHAT --- */
-  .faq-layout-chat { background: #f9fafb; border: 1px solid #e1e3e5; padding: 20px; max-height: 500px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
-  .faq-bot-msg { align-self: flex-start; background: #fff; padding: 10px 15px; border-radius: 0 15px 15px 15px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); font-size: 14px; margin-bottom: 10px;}
-  .faq-user-msg { align-self: flex-end; border: 1px solid var(--faq-color); color: var(--faq-color); padding: 8px 15px; border-radius: 15px 15px 0 15px; font-size: 13px; cursor: pointer; background: rgba(255,255,255,0.8); transition: all 0.2s; }
-  .faq-user-msg:hover { background: var(--faq-color); color: #fff; }
-  .faq-chat-answer { align-self: flex-start; background: #fff; padding: 10px 15px; border-radius: 0 15px 15px 15px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); font-size: 14px; border-left: 3px solid var(--faq-color); animation: fadeIn 0.3s ease; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+  /* --- STYLE: MINIMAL --- */
+  .faq-style-minimal .faq-item {
+    border-bottom: 1px solid #e1e3e5;
+    padding: 20px 0;
+  }
+  .faq-style-minimal h3 { margin: 0 0 5px 0; font-size: 16px; }
+  .faq-style-minimal p { margin: 0; color: #666; }
 
+  /* --- STYLE: CHAT --- */
+  .faq-style-chat {
+    background: #f9fafb;
+    border: 1px solid #e1e3e5;
+    max-width: 600px;
+    margin: 0 auto;
+    overflow: hidden;
+  }
+  .faq-chat-header {
+    padding: 15px;
+    background: white;
+    border-bottom: 1px solid #e1e3e5;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+  }
+  .faq-chat-body { padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+  .faq-bubble-bot {
+    align-self: flex-start;
+    background: white;
+    padding: 12px 16px;
+    border-radius: 0 15px 15px 15px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  }
+  .faq-bubble-user {
+    align-self: flex-end;
+    padding: 10px 16px;
+    border-radius: 15px 15px 0 15px;
+    border: 1px solid; /* Color set by JS */
+    cursor: pointer;
+    background: rgba(255,255,255,0.5);
+  }
 </style>
 
 <script>
   document.addEventListener("DOMContentLoaded", function() {
     const currentProductId = "gid://shopify/Product/{{ product.id }}";
-    // UPDATE THIS URL to your actual hosted App URL
-    const apiUrl = `https://themee-xi.vercel.app/api/faqs?productId=${encodeURIComponent(currentProductId)}`;
+    const shopDomain = "{{ shop.permanent_domain }}";
+    
+    // Pass shop domain to get specific settings
+    const apiUrl = `https://themee-xi.vercel.app/api/faqs?productId=${encodeURIComponent(currentProductId)}&shop=${encodeURIComponent(shopDomain)}`;
 
     fetch(apiUrl)
       .then(res => res.json())
       .then(data => {
-        const { faqs, settings } = data;
-        if (!faqs || faqs.length === 0) return;
+        // Data format: { content: { "Title": [..] }, config: { style: "grid", color: "...", radius: 8 } }
+        if (!data.content || Object.keys(data.content).length === 0) return;
 
-        // 1. Apply Settings (CSS Variables)
+        const config = data.config || { style: 'accordion', color: '#008060', radius: 8 };
+        const faqs = Object.values(data.content).flat(); // Flatten groups for simple layouts
+
         const root = document.getElementById('faq-app-root');
-        const contentDiv = document.getElementById('faq-app-content');
-        
-        root.style.setProperty('--faq-color', settings.color || '#008060');
-        root.style.setProperty('--faq-radius', (settings.radius || 8) + 'px');
-        root.style.display = 'block'; // Show container
-        
-        // 2. Render based on Style
-        let html = '';
-        const style = settings.style || 'accordion';
+        let html = `<div class="faq-app-section">`;
 
-        // --- RENDER LOGIC ---
-        if (style === 'accordion') {
-          contentDiv.className = 'faq-layout-accordion';
-          html = faqs.map(f => `
-            <div class="faq-item" style="border-radius: var(--faq-radius)">
-              <details>
-                <summary>${f.question}</summary>
-                <div class="faq-answer">${f.answer}</div>
-              </details>
-            </div>
-          `).join('');
+        // --- RENDER LOGIC BASED ON STYLE ---
 
-        } else if (style === 'grid') {
-          contentDiv.className = 'faq-layout-grid';
-          html = faqs.map(f => `
-            <div class="faq-item" style="border-radius: var(--faq-radius)">
-              <h3>${f.question}</h3>
-              <p>${f.answer}</p>
-            </div>
-          `).join('');
-
-        } else if (style === 'minimal') {
-          contentDiv.className = 'faq-layout-minimal';
-          html = faqs.map(f => `
-            <div class="faq-item">
-              <h3>${f.question}</h3>
-              <p>${f.answer}</p>
-              <div class="icon">+</div>
-            </div>
-          `).join('');
-
-        } else if (style === 'chat') {
-          contentDiv.className = 'faq-layout-chat';
-          contentDiv.style.borderRadius = "var(--faq-radius)";
-          
-          // Initial Bot Message
-          let chatHtml = `<div class="faq-bot-msg">👋 Hi! How can I help you regarding this product?</div>`;
-          
-          // Questions as buttons
-          faqs.forEach((f, index) => {
-             chatHtml += `<div class="faq-user-msg" onclick="revealAnswer(${index})">${f.question}</div>`;
-             chatHtml += `<div id="ans-${index}" class="faq-chat-answer" style="display:none;">${f.answer}</div>`;
-          });
-          html = chatHtml;
+        // 1. ACCORDION
+        if (config.style === 'accordion') {
+           html += `<h2 class="faq-app-title">Frequently Asked Questions</h2>
+                    <div class="faq-style-accordion" style="display:flex; flex-direction:column; gap:10px;">`;
+           faqs.forEach(f => {
+             html += `
+               <details class="faq-item" style="border-radius:${config.radius}px;">
+                 <summary>
+                   <span>${f.question}</span>
+                   <span style="color:${config.color}">▼</span>
+                 </summary>
+                 <div class="faq-answer">${f.answer}</div>
+               </details>`;
+           });
+           html += `</div>`;
         }
 
-        contentDiv.innerHTML = html;
+        // 2. GRID (Bento)
+        else if (config.style === 'grid') {
+           html += `<h2 class="faq-app-title">Frequently Asked Questions</h2>
+                    <div class="faq-style-grid">`;
+           faqs.forEach(f => {
+             html += `
+               <div class="faq-card" style="border-radius:${config.radius}px; border-top-color:${config.color};">
+                 <h3 style="margin:0 0 10px 0; font-weight:bold;">${f.question}</h3>
+                 <p style="margin:0; color:#666; line-height:1.4;">${f.answer}</p>
+               </div>`;
+           });
+           html += `</div>`;
+        }
 
-        // Injection Logic (Append to Main Content)
-        const mainArea = document.querySelector('main') || document.querySelector('#MainContent') || document.querySelector('.main-content');
-        if (mainArea) mainArea.appendChild(root);
+        // 3. MINIMAL
+        else if (config.style === 'minimal') {
+           html += `<h2 class="faq-app-title">Frequently Asked Questions</h2>
+                    <div class="faq-style-minimal" style="border-top:1px solid #e1e3e5;">`;
+           faqs.forEach(f => {
+             html += `
+               <div class="faq-item">
+                 <h3>${f.question}</h3>
+                 <p>${f.answer}</p>
+                 <div style="color:${config.color}; font-size:20px; line-height:1; margin-top:5px;">+</div>
+               </div>`;
+           });
+           html += `</div>`;
+        }
+
+        // 4. CHAT BOT
+        else if (config.style === 'chat') {
+           html += `
+             <div class="faq-style-chat" style="border-radius:${config.radius}px;">
+               <div class="faq-chat-header">
+                 <div style="width:30px; height:30px; border-radius:50%; background:${config.color}; color:white; display:flex; align-items:center; justify-content:center; font-size:12px;">AI</div>
+                 <span>Support Bot</span>
+               </div>
+               <div class="faq-chat-body">
+                 <div class="faq-bubble-bot">How can I help you today?</div>
+                 ${faqs.map(f => `
+                   <div class="faq-bubble-user" style="color:${config.color}; border-color:${config.color};">
+                     ${f.question}
+                   </div>
+                 `).join('')}
+               </div>
+             </div>
+           `;
+        }
+
+        html += `</div>`;
+        root.innerHTML = html;
+        
+        // Optional: Add interactivity for Chat bubbles if needed (e.g., clicking expands answer)
+        if(config.style === 'chat') {
+          // You would add click listeners here to simulate chat response
+        }
+
       })
-      .catch(err => console.error("FAQ App Error:", err));
+      .catch(e => console.error("FAQ Load Error", e));
   });
-
-  // Helper for Chat Layout
-  function revealAnswer(id) {
-    const el = document.getElementById(`ans-${id}`);
-    if(el) el.style.display = 'block';
-  }
 </script>
-
 {% endif %}
 
 {% schema %}
 {
   "name": "Auto FAQ Injector",
-  "target": "body",
+  "target": "section",
   "settings": []
 }
 {% endschema %}
