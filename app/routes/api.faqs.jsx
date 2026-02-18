@@ -2,44 +2,56 @@ import db from "../db.server";
 
 // This loader acts as a public API for your storefront
 export const loader = async ({ request }) => {
-  // 1. Get the productId from the URL query parameters sent by the storefront
   const url = new URL(request.url);
   const productId = url.searchParams.get("productId");
+  // It is good practice to pass the shop domain from Liquid to identify the store settings
+  const shop = url.searchParams.get("shop"); 
 
-  // If no product ID is provided, return an empty object
-  if (!productId) {
-    return Response.json({}, { headers: { "Access-Control-Allow-Origin": "*" } });
+  const corsHeaders = {
+    "Access-Control-Allow-Origin": "*",
+    "Content-Type": "application/json",
+  };
+
+  // 1. Fetch Storefront Settings (Style, Color, Radius)
+  // We try to find settings for the specific shop, or default to the first record for dev
+  let settings = await db.fAQSettings.findFirst({
+    where: shop ? { shop } : undefined
+  });
+
+  // Apply defaults if no settings exist yet
+  if (!settings) {
+    settings = { style: 'accordion', color: '#008060', radius: 8 };
   }
 
-  // 2. Find which FAQ Sets (titles) are mapped to this specific product
+  // 2. Validate Product ID
+  if (!productId) {
+    return new Response(JSON.stringify({ faqs: [], settings }), { headers: corsHeaders });
+  }
+
+  // 3. Find which FAQ Sets are mapped to this product
   const mappedSets = await db.productFAQMapping.findMany({
     where: { productId: productId }
   });
   
   const assignedTitles = mappedSets.map(map => map.faqTitle);
 
-  // If no FAQs are assigned to this product, return empty so the Liquid block stays hidden
+  // If no FAQs assigned, return empty list but valid settings
   if (assignedTitles.length === 0) {
-    return Response.json({}, { headers: { "Access-Control-Allow-Origin": "*" } });
+    return new Response(JSON.stringify({ faqs: [], settings }), { headers: corsHeaders });
   }
 
-  // 3. Fetch ONLY the FAQs that belong to the assigned titles
+  // 4. Fetch the actual FAQs
   const faqs = await db.fAQ.findMany({
     where: { title: { in: assignedTitles } }
   });
   
-  // 4. Group them by title just like we did in the dashboard
-  const groupedFaqs = faqs.reduce((acc, faq) => {
-    const key = faq.title || "Untitled Set";
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(faq);
-    return acc;
-  }, {});
-
-  // 5. Return the JSON with CORS headers so the storefront can read it
-  return Response.json(groupedFaqs, {
-    headers: {
-      "Access-Control-Allow-Origin": "*", // Allows your storefront to fetch this securely
-    },
+  // 5. Return JSON
+  // We return 'faqs' as a flat list here because the Liquid/JS frontend 
+  // we built in the previous step iterates over a single array.
+  return new Response(JSON.stringify({
+    faqs,     // The list of questions
+    settings  // The design tokens (color, style, radius)
+  }), {
+    headers: corsHeaders,
   });
 };
