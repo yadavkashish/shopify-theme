@@ -45,7 +45,6 @@ export const MinimalTemplate = ({ faqs, config }) => (
             <div key={faq.id} style={{ padding: '15px 0', borderBottom: '1px solid #e1e3e5' }}>
                 <h3 style={{ margin: '0 0 5px 0', fontSize: '16px', color: '#202223' }}>{faq.question}</h3>
                 <p style={{ margin: 0, color: '#666', fontSize: '14px' }}>{faq.answer}</p>
-                <div style={{ marginTop: '5px', fontSize: '20px', color: config.color, lineHeight: 0 }}>+</div>
             </div>
         ))}
     </div>

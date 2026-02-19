@@ -56,16 +56,8 @@ export const loader = async ({ request }) => {
             where: { title: { in: assignedTitles } },
         });
 
-        // 4. Group by title
-        const groupedFaqs = faqs.reduce((acc, faq) => {
-            const key = faq.title || "Untitled Set";
-            if (!acc[key]) acc[key] = [];
-            acc[key].push(faq);
-            return acc;
-        }, {});
-
         // 5. Return content + config
-        return jsonResponse({ content: groupedFaqs, config: settings });
+        return jsonResponse({ faqs: faqs, config: settings });
     } catch (error) {
         console.error("Storefront FAQ API error:", error);
         return jsonResponse({ error: "Internal Server Error" }, 500);

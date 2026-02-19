@@ -1,216 +1,3 @@
-{% if request.page_type == 'product' %}
-
-<div id="faq-app-placeholder" style="display:none;"></div>
-
-<style>
-  /* Base Container */
-  .faq-app-section {
-    padding: 60px 20px;
-    width: 100%;
-    max-width: 1000px; /* Constrain width for readability */
-    margin: 40px auto; 
-    font-family: inherit;
-    box-sizing: border-box;
-  }
-  .faq-app-title { 
-    text-align: center; 
-    margin-bottom: 50px; 
-    font-size: 26px;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    color: #121212;
-  }
-
-  /* --- STYLE: ACCORDION --- */
-  .faq-style-accordion .faq-item {
-    border: none;
-    border-bottom: 1px solid #e1e3e5;
-    background: transparent;
-  }
-  .faq-style-accordion .faq-item:first-child { border-top: 1px solid #e1e3e5; }
-  
-  .faq-style-accordion summary {
-    padding: 24px 0;
-    cursor: pointer;
-    font-weight: 500;
-    font-size: 18px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    list-style: none;
-    transition: opacity 0.2s ease;
-    color: #121212;
-  }
-  .faq-style-accordion summary:hover { opacity: 0.7; }
-  .faq-style-accordion summary::-webkit-details-marker { display: none; }
-  .faq-style-accordion .faq-answer {
-    padding: 0 0 24px;
-    color: #4a4a4a;
-    line-height: 1.6;
-    font-size: 16px;
-  }
-
-  /* --- STYLE: GRID --- */
-  .faq-style-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 30px;
-  }
-  .faq-style-grid .faq-card {
-    padding: 30px;
-    border: 1px solid #e1e3e5;
-    background: #f9f9f9;
-    border-radius: 8px;
-  }
-
-  /* --- STYLE: MINIMAL --- */
-  .faq-style-minimal .faq-item {
-    border-bottom: 1px solid #e1e3e5;
-    padding: 25px 0;
-  }
-  .faq-style-minimal h3 { margin: 0 0 10px 0; font-size: 18px; font-weight: 600; }
-  .faq-style-minimal p { margin: 0; color: #555; line-height: 1.6; font-size: 16px; }
-
-  /* --- STYLE: CHAT --- */
-  .faq-style-chat {
-    background: #fff;
-    border: 1px solid #e1e3e5;
-    max-width: 700px;
-    margin: 0 auto;
-    overflow: hidden;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-  }
-  .faq-chat-header {
-    padding: 20px;
-    background: #f4f6f8;
-    border-bottom: 1px solid #e1e3e5;
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    font-weight: 600;
-  }
-  .faq-chat-body { padding: 30px; display: flex; flex-direction: column; gap: 20px; }
-  .faq-bubble-bot {
-    align-self: flex-start;
-    background: #f4f6f8;
-    padding: 15px 20px;
-    border-radius: 0 20px 20px 20px;
-    font-size: 15px;
-    line-height: 1.5;
-  }
-  .faq-bubble-user {
-    align-self: flex-end;
-    padding: 12px 20px;
-    border-radius: 20px 20px 0 20px;
-    border: 1px solid;
-    cursor: pointer;
-    background: #fff;
-    font-size: 15px;
-  }
-</style>
-
-<script>
-  document.addEventListener("DOMContentLoaded", function() {
-    var currentProductId = "gid://shopify/Product/{{ product.id }}";
-    var shopDomain = "{{ shop.permanent_domain }}";
-
-    // --- CONFIGURATION ---
-    // Change this URL for local development vs production
-    var appUrl = "https://62e6-2a09-bac5-3afe-1a46-00-29e-85.ngrok-free.app"; 
-    
-    var apiUrl = appUrl + "/api/faqs/product?productId=" + encodeURIComponent(currentProductId) + "&shop=" + encodeURIComponent(shopDomain);
-
-    fetch(apiUrl, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "ngrok-skip-browser-warning": "true"
-      }
-    })
-      .then(function(res) { 
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        return res.json(); 
-      })
-      .then(function(data) {
-        if (!data.content || Object.keys(data.content).length === 0) return;
-
-        var config = data.config || { style: 'accordion', color: '#008060', radius: 8 };
-        var faqs = Object.values(data.content).flat();
-        
-        // Find suitable container to append to (at the bottom)
-        // Order of preference: 'main' tag -> '#MainContent' -> body
-        var root = document.createElement('div');
-        root.id = 'faq-app-root';
-        
-        var targetContainer = document.querySelector('main') || document.querySelector('#MainContent');
-        if (targetContainer) {
-             targetContainer.appendChild(root);
-        } else {
-             document.body.appendChild(root);
-        }
-
-        var html = '<div class="faq-app-section">';
-
-        // 1. ACCORDION
-        if (config.style === 'accordion') {
-           html += '<h2 class="faq-app-title">Frequently Asked Questions</h2>' +
-                    '<div class="faq-style-accordion" style="display:flex; flex-direction:column; gap:0;">';
-           faqs.forEach(function(f) {
-              html += '<details class="faq-item" style="border-radius:' + config.radius + 'px;">' +
-                        '<summary><span>' + f.question + '</span><span style="display:flex; align-items:center; justify-content:center; width:24px; height:24px; color:' + config.color + ';">+</span></summary>' +
-                        '<div class="faq-answer">' + f.answer + '</div>' +
-                      '</details>';
-           });
-           html += '</div>';
-        }
-        // 2. GRID
-        else if (config.style === 'grid') {
-           html += '<h2 class="faq-app-title">Frequently Asked Questions</h2>' +
-                    '<div class="faq-style-grid">';
-           faqs.forEach(function(f) {
-              html += '<div class="faq-card" style="border-radius:' + config.radius + 'px; border-top: 4px solid ' + config.color + ';">' +
-                        '<h3 style="margin:0 0 10px 0; font-weight:bold;">' + f.question + '</h3>' +
-                        '<p style="margin:0; color:#666; line-height:1.4;">' + f.answer + '</p>' +
-                      '</div>';
-           });
-           html += '</div>';
-        }
-        // 3. MINIMAL
-        else if (config.style === 'minimal') {
-           html += '<h2 class="faq-app-title">Frequently Asked Questions</h2>' +
-                    '<div class="faq-style-minimal" style="border-top:1px solid #e1e3e5;">';
-           faqs.forEach(function(f) {
-              html += '<div class="faq-item">' +
-                        '<h3>' + f.question + '</h3>' +
-                        '<p>' + f.answer + '</p>' +
-                        '<div style="color:' + config.color + '; font-size:20px; line-height:1; margin-top:5px;">+</div>' +
-                      '</div>';
-           });
-           html += '</div>';
-        }
-        // 4. CHAT
-        else if (config.style === 'chat') {
-           html += '<div class="faq-style-chat" style="border-radius:' + config.radius + 'px;">' +
-                     '<div class="faq-chat-header">' +
-                       '<div style="width:30px; height:30px; border-radius:50%; background:' + config.color + '; color:white; display:flex; align-items:center; justify-content:center; font-size:12px;">AI</div>' +
-                       '<span>Support Bot</span>' +
-                     '</div>' +
-                     '<div class="faq-chat-body">' +
-                       '<div class="faq-bubble-bot">How can I help you today?</div>';
-           faqs.forEach(function(f) {
-              html += '<div class="faq-bubble-user" style="color:' + config.color + '; border-color:' + config.color + ';">' + f.question + '</div>';
-           });
-           html += '</div></div>';
-        }
-
-        html += '</div>';
-        root.innerHTML = html;
-      })
-      .catch(function(e) { console.error("FAQ App: Load Error", e); });
-  });
-</script>
-{% endif %}
-
 {% schema %}
 {
   "name": "Product FAQs",
@@ -218,3 +5,285 @@
   "settings": []
 }
 {% endschema %}
+
+<!-- The App Embed Container -->
+<div id="faq-app-embedded"></div>
+
+<style>
+  /* App Container - ensuring full width & centering logic */
+  #faq-app-embedded {
+    width: 100%;
+    margin-top: 60px;
+    margin-bottom: 60px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    clear: both; /* Ensure it clears floating elements */
+    display: block;
+  }
+  
+  .faq-app-inner {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+
+  .faq-app-title {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 24px;
+    color: #333;
+    text-align: center; 
+  }
+
+  /* 1. Classic Accordion */
+  .faq-style-accordion {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .faq-item {
+    border: 1px solid #e1e3e5;
+    background: #fff;
+    overflow: hidden;
+  }
+  .faq-question-btn {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+  }
+  .faq-answer {
+    padding: 0 20px 20px 20px;
+    color: #555;
+    line-height: 1.6;
+    display: none; /* Initially hidden */
+  }
+  .faq-item.active .faq-answer {
+    display: block;
+  }
+  .faq-icon {
+    transition: transform 0.3s ease;
+  }
+  .faq-item.active .faq-icon {
+    transform: rotate(180deg);
+  }
+
+  /* 2. Grid (Bento) */
+  .faq-style-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+  }
+  .faq-card {
+    padding: 24px;
+    border: 1px solid #e1e3e5;
+    background: #fff;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+  }
+  .faq-card h3 {
+    margin: 0 0 12px 0;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+  .faq-card p {
+    margin: 0;
+    color: #555;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  /* 3. Minimal */
+  .faq-style-minimal {
+    border-top: 1px solid #e1e3e5;
+  }
+  .faq-row {
+    padding: 20px 0;
+    border-bottom: 1px solid #e1e3e5;
+  }
+  .faq-row h3 {
+    margin: 0 0 8px 0;
+    font-size: 17px;
+    color: #202223;
+    font-weight: 600;
+  }
+  .faq-row p {
+    margin: 0;
+    color: #555;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  /* 4. Chat */
+  .faq-style-chat {
+    border: 1px solid #e1e3e5;
+    background: #f9fafb;
+    height: 500px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .chat-header {
+    background: #fff;
+    padding: 16px 20px;
+    border-bottom: 1px solid #e1e3e5;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .chat-body {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .chat-msg {
+    padding: 10px 16px;
+    font-size: 14px;
+    max-width: 80%;
+    line-height: 1.4;
+  }
+  .chat-bot {
+    align-self: flex-start;
+    background: #fff;
+    border-radius: 0 12px 12px 12px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  }
+  .chat-user {
+    align-self: flex-end;
+    background: rgba(255,255,255,0.6);
+    border-radius: 12px 12px 0 12px;
+    cursor: pointer;
+  }
+</style>
+
+<script>
+  (function() {
+    var shopDomain = '{{ shop.permanent_domain }}';
+    var productId = '{{ product.id }}';
+    var productGid = 'gid://shopify/Product/' + productId;
+    
+    // Use app URL or Proxy if available
+    var API_URL = "https://423e-2a09-bac5-3af8-1a46-00-29e-47.ngrok-free.app/api/faqs/product"; 
+
+    function loadFaqs() {
+      fetch(API_URL + "?shop=" + shopDomain + "&productId=" + productGid, {
+        headers: { "ngrok-skip-browser-warning": "true" }
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (!data || !data.faqs || data.faqs.length === 0) {
+          return;
+        }
+        renderFaqs(data.faqs, data.config);
+      })
+      .catch(function(err) { console.log("FAQ App Error:", err); });
+    }
+
+    function renderFaqs(faqs, config) {
+      var container = document.getElementById('faq-app-embedded');
+      if (!container) return;
+
+      // --- MOVING LOGIC: Move to Bottom ---
+      // Try to find the Product Recommendations section (usually at bottom)
+      var target = document.querySelector('.product-recommendations') || 
+                   document.querySelector('#product-recommendations') ||
+                   document.querySelector('.related-products');
+      
+      if (target && target.parentNode) {
+        console.log("FAQ: Moving after recommendations section");
+        target.parentNode.insertBefore(container, target.nextSibling);
+      } else {
+        // Fallback: Check for Main Content
+        var main = document.querySelector('main') || document.querySelector('#MainContent');
+        if (main) {
+             console.log("FAQ: Appending to Main Content");
+             main.appendChild(container);
+        } else {
+             // Fallback: Leave it where it is (body end)
+             console.log("FAQ: Leaving in default position (Body end)");
+        }
+      }
+      // ------------------------------------
+
+      var html = '<div class="faq-app-inner">';
+      html += '<h2 class="faq-app-title">Frequently Asked Questions</h2>';
+
+      // 1. ACCORDION
+      if (config.style === 'accordion') {
+        html += '<div class="faq-style-accordion">';
+        faqs.forEach(function(f) {
+          html += '<div class="faq-item" style="border-radius:' + config.radius + 'px;">' +
+                    '<button class="faq-question-btn" onclick="this.parentElement.classList.toggle(\'active\')">' +
+                      '<span>' + f.question + '</span>' +
+                      '<span class="faq-icon" style="color:' + config.color + ';">▼</span>' +
+                    '</button>' +
+                    '<div class="faq-answer">' + f.answer + '</div>' +
+                  '</div>';
+        });
+        html += '</div>';
+      }
+
+      // 2. GRID (Bento)
+      else if (config.style === 'grid') {
+        html += '<div class="faq-style-grid">';
+        faqs.forEach(function(f) {
+          html += '<div class="faq-card" style="border-radius:' + config.radius + 'px; border-top: 4px solid ' + config.color + ';">' +
+                    '<h3>' + f.question + '</h3>' +
+                    '<p>' + f.answer + '</p>' +
+                  '</div>';
+        });
+        html += '</div>';
+      }
+
+      // 3. MINIMAL (No + icon)
+      else if (config.style === 'minimal') {
+        html += '<div class="faq-style-minimal">';
+        faqs.forEach(function(f) {
+           html += '<div class="faq-row">' +
+                     '<h3>' + f.question + '</h3>' +
+                     '<p>' + f.answer + '</p>' +
+                   '</div>';
+        });
+        html += '</div>';
+      }
+
+      // 4. CHAT
+      else if (config.style === 'chat') {
+        html += '<div class="faq-style-chat" style="border-radius:' + config.radius + 'px;">' +
+                  '<div class="chat-header">' +
+                    '<div style="width:30px; height:30px; border-radius:50%; background:' + config.color + '; color:#fff; display:flex; align-items:center; justify-content:center; font-size:12px;">AI</div>' +
+                    '<span style="font-weight:600; font-size:14px;">Support Bot</span>' +
+                  '</div>' +
+                  '<div class="chat-body">' +
+                    '<div class="chat-msg chat-bot">How can I help you today?</div>';
+        faqs.forEach(function(f) {
+          html += '<div class="chat-msg chat-user" style="border:1px solid ' + config.color + '; color:' + config.color + ';">' + f.question + '</div>';
+        });
+        html +=   '</div>' +
+                '</div>';
+      }
+
+      html += '</div>'; // End inner
+      container.innerHTML = html;
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', loadFaqs);
+    } else {
+      loadFaqs();
+    }
+
+  })();
+</script>
