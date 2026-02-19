@@ -3,7 +3,7 @@ import db from "../db.server.js";
 const corsHeaders = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, ngrok-skip-browser-warning",
 };
 
 function jsonResponse(data, status = 200) {
@@ -12,6 +12,13 @@ function jsonResponse(data, status = 200) {
         headers: { "Content-Type": "application/json", ...corsHeaders },
     });
 }
+
+export const action = async ({ request }) => {
+    if (request.method === "OPTIONS") {
+        return new Response(null, { status: 204, headers: corsHeaders });
+    }
+    return jsonResponse({ error: "Method not allowed" }, 405);
+};
 
 // ===========================================
 // PUBLIC STOREFRONT API

@@ -99,10 +99,19 @@
     const shopDomain = "{{ shop.permanent_domain }}";
     
     // Pass shop domain to get specific settings - Path adjusted to /api/faqs/product
-    const apiUrl = `https://themee-xi.vercel.app/api/faqs/product?productId=${encodeURIComponent(currentProductId)}&shop=${encodeURIComponent(shopDomain)}`;
+    const apiUrl = `https://62e6-2a09-bac5-3afe-1a46-00-29e-85.ngrok-free.app/api/faqs/product?productId=${encodeURIComponent(currentProductId)}&shop=${encodeURIComponent(shopDomain)}`;
 
-    fetch(apiUrl)
-      .then(res => res.json())
+    fetch(apiUrl, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true"
+      }
+    })
+      .then(res => {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json();
+      })
       .then(data => {
         if (!data.content || Object.keys(data.content).length === 0) return;
 

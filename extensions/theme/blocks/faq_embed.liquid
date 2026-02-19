@@ -1,95 +1,111 @@
 {% if request.page_type == 'product' %}
 
-<div id="faq-app-root"></div>
+<div id="faq-app-placeholder" style="display:none;"></div>
 
 <style>
   /* Base Container */
   .faq-app-section {
-    padding: 60px 0;
+    padding: 60px 20px;
     width: 100%;
-    max-width: 1200px;
-    margin: 0 auto;
+    max-width: 1000px; /* Constrain width for readability */
+    margin: 40px auto; 
     font-family: inherit;
+    box-sizing: border-box;
   }
-  .faq-app-title { text-align: center; margin-bottom: 40px; }
+  .faq-app-title { 
+    text-align: center; 
+    margin-bottom: 50px; 
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: #121212;
+  }
 
   /* --- STYLE: ACCORDION --- */
   .faq-style-accordion .faq-item {
-    border: 1px solid #e1e3e5;
-    margin-bottom: 10px;
-    background: white;
-    overflow: hidden;
+    border: none;
+    border-bottom: 1px solid #e1e3e5;
+    background: transparent;
   }
+  .faq-style-accordion .faq-item:first-child { border-top: 1px solid #e1e3e5; }
+  
   .faq-style-accordion summary {
-    padding: 15px;
+    padding: 24px 0;
     cursor: pointer;
-    font-weight: 600;
+    font-weight: 500;
+    font-size: 18px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     list-style: none;
+    transition: opacity 0.2s ease;
+    color: #121212;
   }
+  .faq-style-accordion summary:hover { opacity: 0.7; }
   .faq-style-accordion summary::-webkit-details-marker { display: none; }
   .faq-style-accordion .faq-answer {
-    padding: 0 15px 15px;
-    color: #555;
+    padding: 0 0 24px;
+    color: #4a4a4a;
     line-height: 1.6;
+    font-size: 16px;
   }
 
   /* --- STYLE: GRID --- */
   .faq-style-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 30px;
   }
   .faq-style-grid .faq-card {
-    padding: 20px;
+    padding: 30px;
     border: 1px solid #e1e3e5;
-    background: white;
-    border-top-width: 4px;
-    border-top-style: solid;
+    background: #f9f9f9;
+    border-radius: 8px;
   }
 
   /* --- STYLE: MINIMAL --- */
   .faq-style-minimal .faq-item {
     border-bottom: 1px solid #e1e3e5;
-    padding: 20px 0;
+    padding: 25px 0;
   }
-  .faq-style-minimal h3 { margin: 0 0 5px 0; font-size: 16px; }
-  .faq-style-minimal p { margin: 0; color: #666; }
+  .faq-style-minimal h3 { margin: 0 0 10px 0; font-size: 18px; font-weight: 600; }
+  .faq-style-minimal p { margin: 0; color: #555; line-height: 1.6; font-size: 16px; }
 
   /* --- STYLE: CHAT --- */
   .faq-style-chat {
-    background: #f9fafb;
+    background: #fff;
     border: 1px solid #e1e3e5;
-    max-width: 600px;
+    max-width: 700px;
     margin: 0 auto;
     overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
   }
   .faq-chat-header {
-    padding: 15px;
-    background: white;
+    padding: 20px;
+    background: #f4f6f8;
     border-bottom: 1px solid #e1e3e5;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 15px;
     font-weight: 600;
   }
-  .faq-chat-body { padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+  .faq-chat-body { padding: 30px; display: flex; flex-direction: column; gap: 20px; }
   .faq-bubble-bot {
     align-self: flex-start;
-    background: white;
-    padding: 12px 16px;
-    border-radius: 0 15px 15px 15px;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    background: #f4f6f8;
+    padding: 15px 20px;
+    border-radius: 0 20px 20px 20px;
+    font-size: 15px;
+    line-height: 1.5;
   }
   .faq-bubble-user {
     align-self: flex-end;
-    padding: 10px 16px;
-    border-radius: 15px 15px 0 15px;
+    padding: 12px 20px;
+    border-radius: 20px 20px 0 20px;
     border: 1px solid;
     cursor: pointer;
-    background: rgba(255,255,255,0.5);
+    background: #fff;
+    font-size: 15px;
   }
 </style>
 
@@ -97,26 +113,51 @@
   document.addEventListener("DOMContentLoaded", function() {
     var currentProductId = "gid://shopify/Product/{{ product.id }}";
     var shopDomain = "{{ shop.permanent_domain }}";
-    
-    var apiUrl = "{{ app.proxy_url | default: 'https://themee-xi.vercel.app' }}/api/faqs/product?productId=" + encodeURIComponent(currentProductId) + "&shop=" + encodeURIComponent(shopDomain);
 
-    fetch(apiUrl)
-      .then(function(res) { return res.json(); })
+    // --- CONFIGURATION ---
+    // Change this URL for local development vs production
+    var appUrl = "https://62e6-2a09-bac5-3afe-1a46-00-29e-85.ngrok-free.app"; 
+    
+    var apiUrl = appUrl + "/api/faqs/product?productId=" + encodeURIComponent(currentProductId) + "&shop=" + encodeURIComponent(shopDomain);
+
+    fetch(apiUrl, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true"
+      }
+    })
+      .then(function(res) { 
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json(); 
+      })
       .then(function(data) {
         if (!data.content || Object.keys(data.content).length === 0) return;
 
         var config = data.config || { style: 'accordion', color: '#008060', radius: 8 };
         var faqs = Object.values(data.content).flat();
-        var root = document.getElementById('faq-app-root');
+        
+        // Find suitable container to append to (at the bottom)
+        // Order of preference: 'main' tag -> '#MainContent' -> body
+        var root = document.createElement('div');
+        root.id = 'faq-app-root';
+        
+        var targetContainer = document.querySelector('main') || document.querySelector('#MainContent');
+        if (targetContainer) {
+             targetContainer.appendChild(root);
+        } else {
+             document.body.appendChild(root);
+        }
+
         var html = '<div class="faq-app-section">';
 
         // 1. ACCORDION
         if (config.style === 'accordion') {
            html += '<h2 class="faq-app-title">Frequently Asked Questions</h2>' +
-                    '<div class="faq-style-accordion" style="display:flex; flex-direction:column; gap:10px;">';
+                    '<div class="faq-style-accordion" style="display:flex; flex-direction:column; gap:0;">';
            faqs.forEach(function(f) {
               html += '<details class="faq-item" style="border-radius:' + config.radius + 'px;">' +
-                        '<summary><span>' + f.question + '</span><span style="color:' + config.color + '">▼</span></summary>' +
+                        '<summary><span>' + f.question + '</span><span style="display:flex; align-items:center; justify-content:center; width:24px; height:24px; color:' + config.color + ';">+</span></summary>' +
                         '<div class="faq-answer">' + f.answer + '</div>' +
                       '</details>';
            });
@@ -127,7 +168,7 @@
            html += '<h2 class="faq-app-title">Frequently Asked Questions</h2>' +
                     '<div class="faq-style-grid">';
            faqs.forEach(function(f) {
-              html += '<div class="faq-card" style="border-radius:' + config.radius + 'px; border-top-color:' + config.color + ';">' +
+              html += '<div class="faq-card" style="border-radius:' + config.radius + 'px; border-top: 4px solid ' + config.color + ';">' +
                         '<h3 style="margin:0 0 10px 0; font-weight:bold;">' + f.question + '</h3>' +
                         '<p style="margin:0; color:#666; line-height:1.4;">' + f.answer + '</p>' +
                       '</div>';
@@ -165,7 +206,7 @@
         html += '</div>';
         root.innerHTML = html;
       })
-      .catch(function(e) { console.error("FAQ Load Error", e); });
+      .catch(function(e) { console.error("FAQ App: Load Error", e); });
   });
 </script>
 {% endif %}
