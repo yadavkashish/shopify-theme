@@ -1,153 +1,128 @@
-import express from 'express';
-import db from '../db.server.js'; // Ensure this points to your Prisma client
+import db from "../db.server.js";
 
-const router = express.Router();
+function jsonResponse(data, status = 200, extraHeaders = {}) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "Content-Type": "application/json", ...extraHeaders },
+  });
+}
 
-// ==========================================
-// 1. DASHBOARD: Get Initial Data
-// ==========================================
-router.get('/api/faqs', async (req, res) => {
+// ===========================================
+// LOADER – Handles all GET requests to /api/faqs
+// ===========================================
+export const loader = async ({ request }) => {
+  const url = new URL(request.url);
+  const shop = url.searchParams.get("shop") || "";
+
   try {
     const faqs = await db.fAQ.findMany({
-      orderBy: { createdAt: 'asc' }
+      orderBy: { createdAt: "asc" },
     });
-    
-    // Fetch settings (Assuming single shop for now, or filter by session shop)
-    const settings = (await db.fAQSettings.findFirst()) || { 
-      style: 'accordion', color: '#008060', radius: 8 
+
+    const settings = (await db.fAQSettings.findFirst({
+      where: shop ? { shop } : undefined,
+    })) || {
+      style: "accordion",
+      color: "#008060",
+      radius: 8,
     };
 
-    return res.json({ faqs, settings });
+    const mappings = await db.productFAQMapping.findMany();
+
+    return jsonResponse({ faqs, settings, mappings });
   } catch (error) {
     console.error("Error fetching FAQs:", error);
-    return res.status(500).json({ error: "Failed to fetch data" });
+    return jsonResponse({ error: "Failed to fetch data" }, 500);
   }
-});
+};
 
-// ==========================================
-// 2. DASHBOARD: Save, Update, and Delete
-// ==========================================
-router.post('/api/faqs', async (req, res) => {
-  const { intent } = req.body;
-  
-  // NOTE: In a secure Shopify Express app, you should grab the shop from the session:
-  // const shop = res.locals.shopify.session.shop;
-  const shop = req.body.shop || "default-shop.myshopify.com"; 
+// ===========================================
+// ACTION – Handles all POST requests to /api/faqs
+// ===========================================
+export const action = async ({ request }) => {
+  const body = await request.json();
+  const { intent } = body;
 
   try {
-    // Handle saving UI settings
+    // --- Save UI Settings ---
     if (intent === "saveSettings") {
-      const { style, color, radius } = req.body;
-      
+      const { style, color, radius, shop } = body;
+      const shopName = shop || "default-shop.myshopify.com";
+
       await db.fAQSettings.upsert({
-        where: { shop: shop },
-        update: { style, color, radius },
-        create: { shop, style, color, radius }
+        where: { shop: shopName },
+        update: { style, color, radius: parseInt(radius) },
+        create: { shop: shopName, style, color, radius: parseInt(radius) },
       });
-      return res.json({ success: true });
+      return jsonResponse({ success: true });
     }
 
-    // Handle saving FAQ Sets
+    // --- Save FAQ Set ---
     if (intent === "saveFaqSet") {
-      const { title, questions, idsToDelete } = req.body;
+      const { title, questions, idsToDelete, shop } = body;
+      const shopName = shop || "";
 
-      // Delete any removed questions
       if (idsToDelete && idsToDelete.length > 0) {
         await db.fAQ.deleteMany({
-          where: { id: { in: idsToDelete } }
+          where: { id: { in: idsToDelete } },
         });
       }
 
-      // Create or update the questions in the set
       for (const q of questions) {
         if (q.id && !q.id.toString().startsWith("temp_")) {
           await db.fAQ.update({
             where: { id: q.id },
-            data: { title, question: q.question, answer: q.answer }
+            data: { title, question: q.question, answer: q.answer, shop: shopName },
           });
         } else {
           await db.fAQ.create({
-            data: { title, question: q.question, answer: q.answer }
+            data: { title, question: q.question, answer: q.answer, shop: shopName },
           });
         }
       }
-      return res.json({ success: true });
+      return jsonResponse({ success: true });
     }
 
-    // Handle deleting an entire FAQ Set
+    // --- Delete FAQ Set ---
     if (intent === "deleteSet") {
-      const { title } = req.body;
-      await db.fAQ.deleteMany({
-        where: { title: title }
-      });
-      await db.productFAQMapping.deleteMany({
-        where: { faqTitle: title }
-      });
-      return res.json({ success: true });
+      const { title } = body;
+      await db.fAQ.deleteMany({ where: { title } });
+      await db.productFAQMapping.deleteMany({ where: { faqTitle: title } });
+      return jsonResponse({ success: true });
     }
 
-    return res.status(400).json({ error: "Unknown intent" });
+    // --- Save Product Mappings ---
+    if (intent === "saveProductMapping") {
+      const { faqTitle, productIds } = body;
 
+      await db.productFAQMapping.deleteMany({
+        where: { faqTitle },
+      });
+
+      if (productIds && productIds.length > 0) {
+        await db.productFAQMapping.createMany({
+          data: productIds.map((productId) => ({
+            faqTitle,
+            productId,
+          })),
+        });
+      }
+
+      return jsonResponse({ success: true });
+    }
+
+    // --- Remove Single Product Mapping ---
+    if (intent === "removeProductMapping") {
+      const { faqTitle, productId } = body;
+      await db.productFAQMapping.deleteMany({
+        where: { faqTitle, productId },
+      });
+      return jsonResponse({ success: true });
+    }
+
+    return jsonResponse({ error: "Unknown intent" }, 400);
   } catch (error) {
     console.error("Database error during POST:", error);
-    return res.status(500).json({ error: "Internal Server Error" });
+    return jsonResponse({ error: "Internal Server Error" }, 500);
   }
-});
-
-// ==========================================
-// 3. STOREFRONT: App Block API (Your original code)
-// ==========================================
-router.get('/api/faqs/product', async (req, res) => {
-  // In Express, query parameters are accessed via req.query
-  const { productId, shop: shopParam } = req.query;
-
-  // Set CORS header (or use the 'cors' npm package globally in your express app)
-  res.setHeader("Access-Control-Allow-Origin", "*");
-
-  if (!productId) {
-    return res.json({});
-  }
-
-  try {
-    // 1. Fetch the Style Settings
-    const settings = (await db.fAQSettings.findFirst({
-      where: shopParam ? { shop: shopParam } : undefined
-    })) || { style: 'accordion', color: '#008060', radius: 8 };
-
-    // 2. Find Mapped FAQs
-    const mappedSets = await db.productFAQMapping.findMany({
-      where: { productId: productId }
-    });
-    
-    const assignedTitles = mappedSets.map(map => map.faqTitle);
-
-    if (assignedTitles.length === 0) {
-      return res.json({});
-    }
-
-    // 3. Fetch Questions
-    const faqs = await db.fAQ.findMany({
-      where: { title: { in: assignedTitles } }
-    });
-    
-    // 4. Group Them
-    const groupedFaqs = faqs.reduce((acc, faq) => {
-      const key = faq.title || "Untitled Set";
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(faq);
-      return acc;
-    }, {});
-
-    // 5. Return BOTH content and config
-    return res.json({
-      content: groupedFaqs,
-      config: settings
-    });
-
-  } catch (error) {
-    console.error("Database error:", error);
-    return res.status(500).json({ error: "Internal Server Error" });
-  }
-});
-
-export default router;
+};

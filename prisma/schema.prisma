@@ -39,6 +39,7 @@ model Session {
 
 model FAQ {
   id        String   @id @default(uuid())
+  shop      String   @default("")
   title     String?  
   question  String
   answer    String
