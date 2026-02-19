@@ -1,86 +1,6 @@
-import { useState, useEffect } from "react";
-import { json } from "@remix-run/node";
-import { useLoaderData, useSubmit, useNavigation } from "@remix-run/react";
-import db from "../db.server"; // Ensure this path matches your project structure
+import React, { useState, useEffect } from "react";
 
-// --- 1. BACKEND: DATA LOADER (GET) ---
-export const loader = async ({ request }) => {
-  // 1. Fetch all FAQs
-  const faqs = await db.fAQ.findMany();
-
-  // 2. Fetch Settings (or default)
-  const shop = "my-store.myshopify.com"; // In real app, get from session
-  let settings = await db.fAQSettings.findUnique({ where: { shop } });
-  
-  if (!settings) {
-    settings = { style: "accordion", color: "#008060", radius: 8 };
-  }
-
-  return json({ faqs, settings });
-};
-
-// --- 2. BACKEND: ACTION (POST/PUT/DELETE) ---
-export const action = async ({ request }) => {
-  const formData = await request.formData();
-  const intent = formData.get("intent");
-  const shop = "my-store.myshopify.com"; // In real app, get from session
-
-  // A. SAVE THEME SETTINGS
-  if (intent === "saveSettings") {
-    const style = formData.get("style");
-    const color = formData.get("color");
-    const radius = parseInt(formData.get("radius"));
-
-    await db.fAQSettings.upsert({
-      where: { shop },
-      update: { style, color, radius },
-      create: { shop, style, color, radius }
-    });
-    return json({ status: "success", message: "Storefront design updated!" });
-  }
-
-  // B. SAVE FAQ SET (CREATE OR UPDATE)
-  if (intent === "saveFaqSet") {
-    const title = formData.get("title");
-    const questionsString = formData.get("questions"); // Passed as JSON string
-    const questions = JSON.parse(questionsString);
-    const idsToDeleteString = formData.get("idsToDelete");
-    const idsToDelete = idsToDeleteString ? JSON.parse(idsToDeleteString) : [];
-
-    // 1. Delete removed questions
-    if (idsToDelete.length > 0) {
-      await db.fAQ.deleteMany({ where: { id: { in: idsToDelete } } });
-    }
-
-    // 2. Upsert questions (Update existing, Create new)
-    for (const q of questions) {
-      if (q.id && !q.id.toString().includes("temp")) {
-        // Update existing
-        await db.fAQ.update({
-          where: { id: q.id },
-          data: { title, question: q.question, answer: q.answer }
-        });
-      } else {
-        // Create new
-        await db.fAQ.create({
-          data: { title, question: q.question, answer: q.answer }
-        });
-      }
-    }
-    return json({ status: "success", message: "FAQ Set Saved!" });
-  }
-
-  // C. DELETE ENTIRE SET
-  if (intent === "deleteSet") {
-    const titleToDelete = formData.get("title");
-    await db.fAQ.deleteMany({ where: { title: titleToDelete } });
-    return json({ status: "success", message: "Set Deleted!" });
-  }
-
-  return json({ status: "error" });
-};
-
-// --- UI DATA ---
+// --- UI DATA & TEMPLATES ---
 const UI_STYLES = [
   { id: 'accordion', label: 'Classic Accordion', desc: 'Standard expandable list' },
   { id: 'grid', label: 'Bento Grid', desc: 'Modern card layout' },
@@ -88,7 +8,6 @@ const UI_STYLES = [
   { id: 'chat', label: 'Support Bot', desc: 'Conversational style' },
 ];
 
-// --- TEMPLATE COMPONENTS (Preview Only) ---
 const AccordionTemplate = ({ faqs, config }) => {
   const [openId, setOpenId] = useState(null);
   return (
@@ -178,18 +97,14 @@ const SHeading = ({ children }) => <h2 style={{ fontSize: "16px", fontWeight: "6
 
 // --- MAIN COMPONENT ---
 export default function Index() {
-  // LOAD REAL DATA
-  const { faqs: initialFaqs, settings: initialSettings } = useLoaderData();
-  const submit = useSubmit();
-  const navigation = useNavigation();
-  const isLoading = navigation.state === "submitting";
-
   // State
-  const [faqs, setFaqs] = useState(initialFaqs);
-  const [settings, setSettings] = useState(initialSettings);
-  const [draftSettings, setDraftSettings] = useState(initialSettings); // For theme editor
+  const [faqs, setFaqs] = useState([]);
+  const [settings, setSettings] = useState({ style: "accordion", color: "#008060", radius: 8 });
+  const [draftSettings, setDraftSettings] = useState(null); 
   
   // Navigation & UI State
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [currentView, setCurrentView] = useState("dashboard");
   const [toastMessage, setToastMessage] = useState(null);
 
@@ -198,11 +113,25 @@ export default function Index() {
   const [formRows, setFormRows] = useState([]);
   const [deletedIds, setDeletedIds] = useState([]); 
 
-  // Sync DB data if loader revalidates
+  // Fetch initial data (Replaces useLoaderData)
+  const fetchInitialData = async () => {
+    try {
+      const res = await fetch('/api/faqs');
+      const data = await res.json();
+      setFaqs(data.faqs || []);
+      setSettings(data.settings || { style: "accordion", color: "#008060", radius: 8 });
+      setDraftSettings(data.settings || { style: "accordion", color: "#008060", radius: 8 });
+    } catch (error) {
+      console.error("Failed to fetch data:", error);
+      showToast("Error loading data");
+    } finally {
+      setIsInitializing(false);
+    }
+  };
+
   useEffect(() => {
-    setFaqs(initialFaqs);
-    setSettings(initialSettings);
-  }, [initialFaqs, initialSettings]);
+    fetchInitialData();
+  }, []);
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -216,62 +145,72 @@ export default function Index() {
     return acc;
   }, {});
 
-  // --- HANDLERS ---
+  // --- HANDLERS (Replaces useSubmit) ---
+  const sendApiRequest = async (payload) => {
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/faqs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      await fetchInitialData(); // Re-sync data after mutation
+      return await res.json();
+    } catch (error) {
+      console.error("API Error:", error);
+      showToast("Something went wrong");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // 1. Save Theme Settings
-  const handleApplyTheme = () => {
-    const formData = new FormData();
-    formData.append("intent", "saveSettings");
-    formData.append("style", draftSettings.style);
-    formData.append("color", draftSettings.color);
-    formData.append("radius", draftSettings.radius);
-
-    submit(formData, { method: "post" });
-    
-    // Optimistic Update
+  const handleApplyTheme = async () => {
+    await sendApiRequest({
+      intent: "saveSettings",
+      style: draftSettings.style,
+      color: draftSettings.color,
+      radius: draftSettings.radius
+    });
     setSettings(draftSettings);
     showToast("Storefront Design Updated!");
     setCurrentView("dashboard");
   };
 
   // 2. Save FAQ Set
-  const handleSaveFaqs = () => {
+  const handleSaveFaqs = async () => {
     if (!formTitle.trim()) {
       showToast("Please enter a Group Title");
       return;
     }
-
-    const formData = new FormData();
-    formData.append("intent", "saveFaqSet");
-    formData.append("title", formTitle);
-    formData.append("questions", JSON.stringify(formRows)); // Send as stringified JSON
-    formData.append("idsToDelete", JSON.stringify(deletedIds));
-
-    submit(formData, { method: "post" });
-
+    await sendApiRequest({
+      intent: "saveFaqSet",
+      title: formTitle,
+      questions: formRows, // Sending raw array, let JSON stringify handle it
+      idsToDelete: deletedIds
+    });
     showToast("FAQ Set Saved!");
     setCurrentView("faq_list");
   };
 
   // 3. Delete FAQ Set
-  const handleDeleteSet = () => {
+  const handleDeleteSet = async () => {
     if (window.confirm("Delete this entire set?")) {
-      const formData = new FormData();
-      formData.append("intent", "deleteSet");
-      formData.append("title", formTitle);
-      
-      submit(formData, { method: "post" });
-      
+      await sendApiRequest({
+        intent: "deleteSet",
+        title: formTitle
+      });
       showToast("Set Deleted!");
       setCurrentView("faq_list");
     }
   };
 
+  if (isInitializing) return <div style={{ padding: "40px", textAlign: "center" }}>Loading App Data...</div>;
+
   // --- RENDER VIEWS ---
 
   // VIEW 1: THEME EDITOR
   if (currentView === "theme_editor") {
-    // Generate preview data from existing FAQs or dummies if empty
     const previewFaqs = faqs.length > 0 ? faqs.slice(0,3) : [
        { id: 1, question: "Example Question?", answer: "This is how your answer will look." },
        { id: 2, question: "Is this customizable?", answer: "Yes! Change colors and styles on the left." }

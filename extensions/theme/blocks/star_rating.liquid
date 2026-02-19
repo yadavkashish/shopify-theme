@@ -46,7 +46,7 @@
     padding: 20px;
     border: 1px solid #e1e3e5;
     background: white;
-    border-top-width: 4px; /* Color set by JS */
+    border-top-width: 4px;
     border-top-style: solid;
   }
 
@@ -87,7 +87,7 @@
     align-self: flex-end;
     padding: 10px 16px;
     border-radius: 15px 15px 0 15px;
-    border: 1px solid; /* Color set by JS */
+    border: 1px solid;
     cursor: pointer;
     background: rgba(255,255,255,0.5);
   }
@@ -98,22 +98,19 @@
     const currentProductId = "gid://shopify/Product/{{ product.id }}";
     const shopDomain = "{{ shop.permanent_domain }}";
     
-    // Pass shop domain to get specific settings
-    const apiUrl = `https://themee-xi.vercel.app/api/faqs?productId=${encodeURIComponent(currentProductId)}&shop=${encodeURIComponent(shopDomain)}`;
+    // Pass shop domain to get specific settings - Path adjusted to /api/faqs/product
+    const apiUrl = `https://themee-xi.vercel.app/api/faqs/product?productId=${encodeURIComponent(currentProductId)}&shop=${encodeURIComponent(shopDomain)}`;
 
     fetch(apiUrl)
       .then(res => res.json())
       .then(data => {
-        // Data format: { content: { "Title": [..] }, config: { style: "grid", color: "...", radius: 8 } }
         if (!data.content || Object.keys(data.content).length === 0) return;
 
         const config = data.config || { style: 'accordion', color: '#008060', radius: 8 };
-        const faqs = Object.values(data.content).flat(); // Flatten groups for simple layouts
+        const faqs = Object.values(data.content).flat();
 
         const root = document.getElementById('faq-app-root');
         let html = `<div class="faq-app-section">`;
-
-        // --- RENDER LOGIC BASED ON STYLE ---
 
         // 1. ACCORDION
         if (config.style === 'accordion') {
@@ -131,7 +128,6 @@
            });
            html += `</div>`;
         }
-
         // 2. GRID (Bento)
         else if (config.style === 'grid') {
            html += `<h2 class="faq-app-title">Frequently Asked Questions</h2>
@@ -145,7 +141,6 @@
            });
            html += `</div>`;
         }
-
         // 3. MINIMAL
         else if (config.style === 'minimal') {
            html += `<h2 class="faq-app-title">Frequently Asked Questions</h2>
@@ -160,7 +155,6 @@
            });
            html += `</div>`;
         }
-
         // 4. CHAT BOT
         else if (config.style === 'chat') {
            html += `
@@ -183,12 +177,6 @@
 
         html += `</div>`;
         root.innerHTML = html;
-        
-        // Optional: Add interactivity for Chat bubbles if needed (e.g., clicking expands answer)
-        if(config.style === 'chat') {
-          // You would add click listeners here to simulate chat response
-        }
-
       })
       .catch(e => console.error("FAQ Load Error", e));
   });

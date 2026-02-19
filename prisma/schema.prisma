@@ -33,30 +33,31 @@ model Session {
   refreshTokenExpires DateTime?
 }
 
-// --- NEW FAQ MODEL ---
+// --- prisma/schema.prisma ---
+
+// --- prisma/schema.prisma ---
+
 model FAQ {
   id        String   @id @default(uuid())
-  title     String?  // The group title (e.g. "Shipping")
+  title     String?  
   question  String
   answer    String
   createdAt DateTime @default(now())
- 
 }
+
+// UPDATE THIS MODEL
 model FAQSettings {
   id        String   @id @default(uuid())
   shop      String   @unique
-  // New visual fields
-  style     String   @default("accordion") // 'accordion', 'grid', 'minimal', 'chat'
+  style     String   @default("accordion")
   color     String   @default("#008060")
   radius    Int      @default(8)
 }
 
-// Add this below your existing FAQ model
 model ProductFAQMapping {
-  id        String @id @default(uuid())
+  id        String   @id @default(uuid())
   faqTitle  String
-  productId String // Will store the Shopify product GID
+  productId String
 
-  // This prevents assigning the same FAQ set to the same product twice
   @@unique([faqTitle, productId]) 
 }
