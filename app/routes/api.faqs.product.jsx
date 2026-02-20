@@ -35,13 +35,29 @@ export const loader = async ({ request }) => {
     }
 
     try {
-        // 1. Fetch Style Settings (FIXED: db.faqSettings)
-        const settings = (await db.faqSettings.findFirst({
+        // DEBUG: Prints all available DB models to your Vercel server logs
+        console.log("AVAILABLE DB MODELS ON VERCEL:", Object.keys(db));
+
+        // FAILSAFE: Check if Vercel actually generated the Prisma client
+        if (!db.fAQSettings && !db.faqSettings) {
+             return jsonResponse({ 
+                 error: "Database Models Missing", 
+                 details: "Prisma models are undefined. You MUST change your Vercel Build Command to: npx prisma generate && remix build" 
+             }, 500);
+        }
+
+        // DYNAMIC CASING: Automatically use whichever casing Prisma generated
+        const faqSettingsModel = db.fAQSettings || db.faqSettings;
+        const faqModel = db.fAQ || db.faq;
+        const mappingModel = db.productFAQMapping || db.productFaqMapping;
+
+        // 1. Fetch Style Settings
+        const settings = (await faqSettingsModel.findFirst({
             where: shopParam ? { shop: shopParam } : undefined,
         })) || { style: "accordion", color: "#008060", radius: 8 };
 
         // 2. Find Mapped FAQ titles for this product
-        const mappedSets = await db.productFAQMapping.findMany({
+        const mappedSets = await mappingModel.findMany({
             where: { productId },
         });
 
@@ -51,8 +67,8 @@ export const loader = async ({ request }) => {
             return jsonResponse({});
         }
 
-        // 3. Fetch FAQ questions for those titles (FIXED: db.faq)
-        const faqs = await db.faq.findMany({
+        // 3. Fetch FAQ questions for those titles
+        const faqs = await faqModel.findMany({
             where: { title: { in: assignedTitles } },
         });
 
