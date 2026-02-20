@@ -35,8 +35,8 @@ export const loader = async ({ request }) => {
     }
 
     try {
-        // 1. Fetch Style Settings
-        const settings = (await db.fAQSettings.findFirst({
+        // 1. Fetch Style Settings (FIXED: db.faqSettings)
+        const settings = (await db.faqSettings.findFirst({
             where: shopParam ? { shop: shopParam } : undefined,
         })) || { style: "accordion", color: "#008060", radius: 8 };
 
@@ -51,15 +51,16 @@ export const loader = async ({ request }) => {
             return jsonResponse({});
         }
 
-        // 3. Fetch FAQ questions for those titles
-        const faqs = await db.fAQ.findMany({
+        // 3. Fetch FAQ questions for those titles (FIXED: db.faq)
+        const faqs = await db.faq.findMany({
             where: { title: { in: assignedTitles } },
         });
 
-        // 5. Return content + config
+        // 4. Return content + config
         return jsonResponse({ faqs: faqs, config: settings });
     } catch (error) {
         console.error("Storefront FAQ API error:", error);
-        return jsonResponse({ error: "Internal Server Error" }, 500);
+        // Expose the error message to the browser network tab for easier debugging
+        return jsonResponse({ error: "Internal Server Error", details: error.message }, 500);
     }
 };
