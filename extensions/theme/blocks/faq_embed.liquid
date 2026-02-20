@@ -174,13 +174,12 @@
     var productId = '{{ product.id }}';
     var productGid = 'gid://shopify/Product/' + productId;
     
-    // Use app URL or Proxy if available
-    var API_URL = "https://423e-2a09-bac5-3af8-1a46-00-29e-47.ngrok-free.app/api/faqs/product"; 
+   // Use app URL or Proxy if available
+    var appUrl = "https://themee-xi.vercel.app";
+    var API_URL = appUrl + "/api/faqs/product"; // <-- Define API_URL here
 
     function loadFaqs() {
-      fetch(API_URL + "?shop=" + shopDomain + "&productId=" + productGid, {
-        headers: { "ngrok-skip-browser-warning": "true" }
-      })
+      fetch(API_URL + "?shop=" + shopDomain + "&productId=" + productGid)
       .then(function(res) { return res.json(); })
       .then(function(data) {
         if (!data || !data.faqs || data.faqs.length === 0) {
