@@ -62,3 +62,31 @@ model ProductFAQMapping {
 
   @@unique([faqTitle, productId]) 
 }
+// --- Add these to your prisma/schema.prisma ---
+
+model Testimonial {
+  id        String   @id @default(uuid())
+  shop      String   @default("")
+  title     String?  
+  author    String
+  subtitle  String?
+  rating    Int      @default(5)
+  content   String
+  createdAt DateTime @default(now())
+}
+
+model TestimonialSettings {
+  id        String   @id @default(uuid())
+  shop      String   @unique
+  style     String   @default("grid")
+  color     String   @default("#ffb800")
+  radius    Int      @default(12)
+}
+
+model ProductTestimonialMapping {
+  id         String   @id @default(uuid())
+  testiTitle String
+  productId  String
+
+  @@unique([testiTitle, productId]) 
+}

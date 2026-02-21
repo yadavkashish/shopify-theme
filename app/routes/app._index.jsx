@@ -23,7 +23,7 @@ const SPage = ({ children, heading, primaryAction }) => ( <div style={{ maxWidth
 const SButton = ({ children, onClick, variant = "default", tone, loading }) => ( <button onClick={onClick} disabled={loading} style={{ background: variant === 'primary' ? (tone === 'critical' ? '#d82c0d' : '#000') : 'transparent', color: variant === 'primary' ? '#fff' : (tone === 'critical' ? '#d82c0d' : '#005bd3'), border: variant === 'primary' ? 'none' : '1px solid #babfc3', padding: "8px 16px", borderRadius: "4px", cursor: loading ? "wait" : "pointer", fontWeight: "500", fontSize: "14px", opacity: loading ? 0.7 : 1 }}>{loading ? "Saving..." : children}</button> );
 const SSection = ({ heading, children }) => ( <div style={{ background: "#fff", borderRadius: "8px", border: "1px solid #e1e3e5", padding: "20px", marginBottom: "20px", boxShadow: "0 0 0 1px rgba(63, 63, 68, 0.05), 0 1px 3px 0 rgba(63, 63, 68, 0.15)" }}> {heading && <h3 style={{ fontSize: "16px", fontWeight: "600", marginTop: 0, marginBottom: "15px" }}>{heading}</h3>} {children} </div> );
 const SStack = ({ children, direction = "row", gap = "10px" }) => ( <div style={{ display: "flex", flexDirection: direction === "block" ? "column" : "row", gap: gap === "large" ? "20px" : "10px" }}>{children}</div> );
-const SHeading = ({ children }) => <h2 style={{ fontSize: "16px", fontWeight: "600", margin: 0, color: "#202223" }}>{children}</h2>;
+const SHeading = ({ children }) => <h2 style={{ fontSize: "16px", fontWeight: "600", margin: "0", color: "#202223" }}>{children}</h2>;
 const SInput = (props) => <input style={{ width: "100%", padding: "10px", border: "1px solid #babfc3", borderRadius: "4px", boxSizing: "border-box" }} {...props} />;
 const STextArea = (props) => <textarea style={{ width: "100%", padding: "10px", border: "1px solid #babfc3", borderRadius: "4px", boxSizing: "border-box", resize: "vertical" }} {...props} />;
 const SLabel = ({ children }) => <label style={{ display: "block", marginBottom: "4px", fontWeight: "500", fontSize: "13px" }}>{children}</label>;
@@ -135,40 +135,39 @@ const TestimonialSocialTemplate = ({ testimonials, config }) => (
 );
 
 export default function Index() {
-  // Grab the shop domain dynamically using native JS
   const [shop, setShop] = useState("");
 
   useEffect(() => {
-    // Read the '?shop=...' parameter from the browser URL
     const params = new URLSearchParams(window.location.search);
     const shopDomain = params.get("shop") || "my-store.myshopify.com";
     setShop(shopDomain);
   }, []);
 
-  // STATE (Original FAQ State)
-  const [faqs, setFaqs] = useState([]);
-  const [mappings, setMappings] = useState([]);
-  const [settings, setSettings] = useState({ style: "accordion", color: "#008060", radius: 8 });
-  const [draftSettings, setDraftSettings] = useState(null);
-
+  // STATE: General
   const [isInitializing, setIsInitializing] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [currentView, setCurrentView] = useState("dashboard");
   const [toastMessage, setToastMessage] = useState(null);
 
+  // STATE: FAQs
+  const [faqs, setFaqs] = useState([]);
+  const [mappings, setMappings] = useState([]);
+  const [settings, setSettings] = useState({ style: "accordion", color: "#008060", radius: 8 });
+  const [draftSettings, setDraftSettings] = useState(null);
   const [formTitle, setFormTitle] = useState("");
   const [formRows, setFormRows] = useState([]);
   const [deletedIds, setDeletedIds] = useState([]);
   const [assigningFaqTitle, setAssigningFaqTitle] = useState(null);
 
-  // STATE (New Testimonials State)
-  const [testimonials, setTestimonials] = useState(INITIAL_TESTIMONIALS);
+  // STATE: Testimonials
+  const [testimonials, setTestimonials] = useState([]);
+  const [testiMappings, setTestiMappings] = useState([]);
   const [testiSettings, setTestiSettings] = useState({ style: "grid", color: "#ffb800", radius: 12 });
   const [testiDraftSettings, setTestiDraftSettings] = useState(null);
-  
   const [testiFormTitle, setTestiFormTitle] = useState("");
   const [testiFormRows, setTestiFormRows] = useState([]);
   const [testiDeletedIds, setTestiDeletedIds] = useState([]);
+  const [assigningTestiTitle, setAssigningTestiTitle] = useState(null);
 
   // DATA FETCHING
   const showToast = (msg) => {
@@ -177,15 +176,23 @@ export default function Index() {
   };
 
   const fetchInitialData = useCallback(async () => {
-    if (!shop) return; // Don't fetch until we have the shop domain
+    if (!shop) return; 
     try {
       const res = await fetch(`/api/faqs?shop=${shop}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
+      
+      // Load FAQ Data
       setFaqs(data.faqs || []);
       setMappings(data.mappings || []);
       setSettings(data.settings || { style: "accordion", color: "#008060", radius: 8 });
       setDraftSettings(data.settings || { style: "accordion", color: "#008060", radius: 8 });
+
+      // Load Testimonial Data
+      setTestimonials(data.testimonials || []);
+      setTestiMappings(data.testiMappings || []);
+      setTestiSettings(data.testiSettings || { style: "grid", color: "#ffb800", radius: 12 });
+      setTestiDraftSettings(data.testiSettings || { style: "grid", color: "#ffb800", radius: 12 });
     } catch (error) {
       console.error("Failed to fetch data:", error);
       showToast("Error loading data");
@@ -247,7 +254,6 @@ export default function Index() {
     const initialSelectionIds = currentMappings.map(m => ({ id: m.productId }));
 
     try {
-      // Assumes Shopify App Bridge is globally available in your React setup
       const selected = await window.shopify.resourcePicker({
         type: "product",
         multiple: true,
@@ -271,50 +277,61 @@ export default function Index() {
     showToast("Product removed");
   };
 
-  // ACTIONS (New Testimonials)
-  const handleApplyTestiTheme = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setTestiSettings(testiDraftSettings); 
-      showToast("Testimonial Design Updated!");
-      setCurrentView("dashboard");
-      setIsLoading(false);
-    }, 600);
+  // ACTIONS (New Testimonials - Now using the Database APIs)
+  const handleApplyTestiTheme = async () => {
+    await sendApiRequest({ intent: "saveTestiSettings", ...testiDraftSettings });
+    setTestiSettings(testiDraftSettings); 
+    showToast("Testimonial Design Updated!");
+    setCurrentView("dashboard");
   };
 
-  const handleSaveTestimonials = () => {
+  const handleSaveTestimonials = async () => {
     if (!testiFormTitle.trim()) { showToast("Please enter a Testimonial Set Name"); return; }
-    setIsLoading(true);
-    setTimeout(() => {
-      let updatedList = [...testimonials];
-      if (testiDeletedIds.length > 0) updatedList = updatedList.filter(t => !testiDeletedIds.includes(t.id));
-      
-      const newEntries = [];
-      testiFormRows.forEach(row => {
-        if (row.id && !row.id.toString().includes("temp")) {
-          const index = updatedList.findIndex(t => t.id === row.id);
-          if (index !== -1) updatedList[index] = { ...updatedList[index], title: testiFormTitle, ...row };
-        } else {
-          newEntries.push({ id: Math.random(), title: testiFormTitle, ...row });
-        }
-      });
-      setTestimonials([...updatedList, ...newEntries]);
-      showToast("Testimonial Set Saved!");
-      setCurrentView("testi_list");
-      setIsLoading(false);
-    }, 600);
+    await sendApiRequest({ 
+      intent: "saveTestimonialSet", 
+      title: testiFormTitle, 
+      testimonials: testiFormRows, 
+      idsToDelete: testiDeletedIds 
+    });
+    showToast("Testimonial Set Saved!");
+    setCurrentView("testi_list");
   };
 
-  const handleDeleteTestiSet = () => {
+  const handleDeleteTestiSet = async () => {
     if (window.confirm("Delete this entire Testimonial set?")) {
-      setIsLoading(true);
-      setTimeout(() => {
-        setTestimonials(testimonials.filter(t => t.title !== testiFormTitle));
-        showToast("Testimonial Set Deleted!");
-        setCurrentView("testi_list");
-        setIsLoading(false);
-      }, 600);
+      await sendApiRequest({ intent: "deleteTestiSet", title: testiFormTitle });
+      showToast("Testimonial Set Deleted!");
+      setCurrentView("testi_list");
     }
+  };
+
+  const handleOpenTestiProductPicker = useCallback(async (testiTitle) => {
+    setAssigningTestiTitle(testiTitle);
+    const currentMappings = testiMappings.filter(m => m.testiTitle === testiTitle);
+    const initialSelectionIds = currentMappings.map(m => ({ id: m.productId }));
+
+    try {
+      const selected = await window.shopify.resourcePicker({
+        type: "product",
+        multiple: true,
+        action: "select",
+        selectionIds: initialSelectionIds,
+      });
+
+      if (selected) {
+        const productIds = selected.map(p => p.id);
+        await sendApiRequest({ intent: "saveTestiProductMapping", testiTitle, productIds });
+        showToast(productIds.length > 0 ? `Assigned ${productIds.length} product(s)` : `Removed all products`);
+      }
+    } catch (error) {
+      console.error("Testimonial Product picker error:", error);
+    }
+    setAssigningTestiTitle(null);
+  }, [testiMappings]);
+
+  const handleRemoveTestiProduct = async (testiTitle, productId) => {
+    await sendApiRequest({ intent: "removeTestiProductMapping", testiTitle, productId });
+    showToast("Product removed");
   };
 
   if (isInitializing) return <div style={{ padding: "40px", textAlign: "center" }}>Loading App Data...</div>;
@@ -380,8 +397,9 @@ export default function Index() {
     );
   }
 
-  // VIEW: TESTIMONIAL THEME EDITOR (New)
+  // VIEW: TESTIMONIAL THEME EDITOR
   if (currentView === "testi_theme_editor") {
+    // If empty, fall back to initial mock array just for visual previewing 
     const previewTesti = testimonials.length > 0 ? testimonials.slice(0, 3) : INITIAL_TESTIMONIALS;
     return (
       <SPage heading="Customize Testimonials" primaryAction={<SButton onClick={() => setCurrentView("dashboard")}>Cancel</SButton>}>
@@ -466,7 +484,7 @@ export default function Index() {
     );
   }
 
-  // VIEW: TESTIMONIAL EDITOR (New)
+  // VIEW: TESTIMONIAL EDITOR
   if (currentView === "testi_editor") {
     const isEditing = testiFormRows.some(row => row.id && !row.id.toString().includes("temp"));
     return (
@@ -572,7 +590,7 @@ export default function Index() {
     );
   }
 
-  // VIEW: TESTIMONIAL LIST (New)
+  // VIEW: TESTIMONIAL LIST (Updated to include Product Picker functionality)
   if (currentView === "testi_list") {
     return (
       <SPage heading="Testimonials Manager" primaryAction={<SButton onClick={() => setCurrentView("dashboard")}>Back to Dashboard</SButton>}>
@@ -588,27 +606,44 @@ export default function Index() {
            </div>
            
            <SStack direction="block" gap="base">
-             {Object.entries(groupedTestimonials).map(([title, list]) => (
-               <div key={title} style={{ background: "#fff", border: "1px solid #e1e3e5", borderRadius: "8px", padding: "16px", display: "flex", flexDirection: "column", gap: "15px" }}>
-                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                   <div>
-                     <h3 style={{ margin: "0 0 5px 0", fontSize: "16px", fontWeight: "600" }}>{title}</h3>
-                     <p style={{ margin: 0, color: "#666", fontSize: "14px" }}>{list.length} review(s)</p>
+             {Object.entries(groupedTestimonials).map(([title, list]) => {
+               // Filter mapped products for this specific testimonial set
+               const assignedProducts = testiMappings.filter(m => m.testiTitle === title);
+               
+               return (
+                 <div key={title} style={{ background: "#fff", border: "1px solid #e1e3e5", borderRadius: "8px", padding: "16px", display: "flex", flexDirection: "column", gap: "15px" }}>
+                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                     <div>
+                       <h3 style={{ margin: "0 0 5px 0", fontSize: "16px", fontWeight: "600" }}>{title}</h3>
+                       <p style={{ margin: 0, color: "#666", fontSize: "14px" }}>{list.length} review(s)</p>
+                     </div>
+                     <div style={{ display: "flex", gap: "10px" }}>
+                       {/* Hooked up to the real product picker */}
+                       <SButton onClick={() => handleOpenTestiProductPicker(title)} loading={assigningTestiTitle === title}>🔗 Choose Products</SButton>
+                       <SButton onClick={() => { 
+                         setTestiFormTitle(title === "Untitled Set" ? "" : title); 
+                         setTestiFormRows(list.map(t => ({...t}))); 
+                         setTestiDeletedIds([]); 
+                         setCurrentView("testi_editor"); 
+                       }}>Edit Set</SButton>
+                     </div>
                    </div>
-                   <div style={{ display: "flex", gap: "10px" }}>
-                     <SButton onClick={() => { 
-                        if(window.confirm(`Simulate assigning "${title}" to products?`)) showToast("Assigned to products!"); 
-                     }}>🔗 Choose Products</SButton>
-                     <SButton onClick={() => { 
-                       setTestiFormTitle(title === "Untitled Set" ? "" : title); 
-                       setTestiFormRows(list.map(t => ({...t}))); 
-                       setTestiDeletedIds([]); 
-                       setCurrentView("testi_editor"); 
-                     }}>Edit Set</SButton>
-                   </div>
+                   
+                   {/* Product Tags rendering block for Testimonials */}
+                   {assignedProducts.length > 0 && (
+                    <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px solid #e1e3e5" }}>
+                      <p style={{ margin: "0 0 8px 0", fontSize: "12px", color: "#666", textTransform: "uppercase", letterSpacing: "0.5px" }}>Assigned Products ({assignedProducts.length})</p>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                        {assignedProducts.map(mp => (
+                          <SProductTag key={mp.id} label={mp.productId.replace("gid://shopify/Product/", "Product #")} onRemove={() => handleRemoveTestiProduct(title, mp.productId)} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                  </div>
-               </div>
-             ))}
+               )
+             })}
              {Object.keys(groupedTestimonials).length === 0 && <div style={{ textAlign: "center", padding: "40px", color: "#8c9196" }}>No reviews found.</div>}
            </SStack>
         </SSection>
