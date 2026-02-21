@@ -1,11 +1,9 @@
 /*
 This file manages the main application logic.
 Templates and UI components are imported to keep the file clean.
+No Remix dependencies are used.
 */
 import React, { useState, useEffect, useCallback } from "react";
-
-// --- MOCKED DEPENDENCIES FOR PREVIEW ---
-const useLoaderData = () => ({ shop: "my-store.myshopify.com" });
 
 // Mock FAQ Templates
 const UI_STYLES = [
@@ -14,6 +12,7 @@ const UI_STYLES = [
   { id: 'minimal', label: 'Minimalist', desc: 'Clean, simple text' },
   { id: 'chat', label: 'Support Bot', desc: 'Conversational style' },
 ];
+
 const AccordionTemplate = ({ faqs, config }) => ( <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}> {faqs.map((faq) => ( <div key={faq.id} style={{ border: '1px solid #e1e3e5', borderRadius: `${config.radius}px`, padding: '15px', backgroundColor: 'white' }}> <div style={{ fontWeight: '600', color: '#333' }}>{faq.question || "Question?"}</div> <div style={{ marginTop: '5px', color: '#666', fontSize: '14px' }}>{faq.answer || "Answer goes here."}</div> </div> ))} </div> );
 const GridTemplate = ({ faqs, config }) => ( <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}> {faqs.map((faq) => ( <div key={faq.id} style={{ padding: '20px', border: `1px solid ${config.color || '#e1e3e5'}`, borderRadius: `${config.radius}px`, backgroundColor: 'white', borderTop: `4px solid ${config.color}` }}> <h3 style={{ margin: '0 0 10px 0', fontSize: '15px' }}>{faq.question || "Question?"}</h3> <p style={{ margin: 0, color: '#666', fontSize: '13px' }}>{faq.answer || "Answer goes here."}</p> </div> ))} </div> );
 const MinimalTemplate = ({ faqs, config }) => ( <div> {faqs.map((faq) => ( <div key={faq.id} style={{ padding: '15px 0', borderBottom: '1px solid #e1e3e5' }}> <h3 style={{ margin: '0 0 5px 0', fontSize: '16px' }}>{faq.question || "Question?"}</h3> <p style={{ margin: 0, color: '#666', fontSize: '14px' }}>{faq.answer || "Answer goes here."}</p> </div> ))} </div> );
@@ -33,9 +32,7 @@ const SToast = ({ message }) => message ? <div style={{ position: "fixed", botto
 const SProductTag = ({ label, onRemove }) => ( <div style={{ display: "inline-flex", alignItems: "center", background: "#e4e5e7", padding: "4px 8px", borderRadius: "4px", fontSize: "12px" }}> {label} <span onClick={onRemove} style={{ marginLeft: "5px", cursor: "pointer", fontWeight: "bold" }}>×</span> </div> );
 const SAddButton = ({ onClick, label }) => ( <div onClick={onClick} style={{ textAlign: "center", padding: "15px", border: "1px dashed #babfc3", borderRadius: "4px", cursor: "pointer", background: "#f9fafb", marginTop: "10px", fontWeight: "600" }}>{label}</div> );
 
-// ==========================================
 // TESTIMONIAL MOCK DATA & CONFIG
-// ==========================================
 const INITIAL_TESTIMONIALS = [
   { id: 1, title: "Homepage Reviews", author: "Sarah Jenkins", subtitle: "Verified Buyer", rating: 5, content: "Absolutely love this product! It has completely changed my daily routine." },
   { id: 2, title: "Homepage Reviews", author: "David Chen", subtitle: "Tech Enthusiast", rating: 4, content: "Great quality and works exactly as described. The customer service team was also very helpful." },
@@ -48,9 +45,6 @@ const TESTIMONIAL_UI_STYLES = [
   { id: 'social', label: 'Social Cards', desc: 'Looks like Twitter/Social posts' },
 ];
 
-// ==========================================
-// TESTIMONIAL HELPER & TEMPLATE COMPONENTS
-// ==========================================
 const StarRating = ({ rating, color }) => (
   <div style={{ display: 'flex', gap: '2px', marginBottom: '8px' }}>
     {[1, 2, 3, 4, 5].map(star => (
@@ -141,9 +135,17 @@ const TestimonialSocialTemplate = ({ testimonials, config }) => (
 );
 
 export default function Index() {
-  const { shop } = useLoaderData();
+  // Grab the shop domain dynamically using native JS
+  const [shop, setShop] = useState("");
 
-  // --- STATE (Original FAQ State) ---
+  useEffect(() => {
+    // Read the '?shop=...' parameter from the browser URL
+    const params = new URLSearchParams(window.location.search);
+    const shopDomain = params.get("shop") || "my-store.myshopify.com";
+    setShop(shopDomain);
+  }, []);
+
+  // STATE (Original FAQ State)
   const [faqs, setFaqs] = useState([]);
   const [mappings, setMappings] = useState([]);
   const [settings, setSettings] = useState({ style: "accordion", color: "#008060", radius: 8 });
@@ -159,7 +161,7 @@ export default function Index() {
   const [deletedIds, setDeletedIds] = useState([]);
   const [assigningFaqTitle, setAssigningFaqTitle] = useState(null);
 
-  // --- STATE (New Testimonials State) ---
+  // STATE (New Testimonials State)
   const [testimonials, setTestimonials] = useState(INITIAL_TESTIMONIALS);
   const [testiSettings, setTestiSettings] = useState({ style: "grid", color: "#ffb800", radius: 12 });
   const [testiDraftSettings, setTestiDraftSettings] = useState(null);
@@ -168,13 +170,14 @@ export default function Index() {
   const [testiFormRows, setTestiFormRows] = useState([]);
   const [testiDeletedIds, setTestiDeletedIds] = useState([]);
 
-  // --- DATA FETCHING ---
+  // DATA FETCHING
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const fetchInitialData = async () => {
+  const fetchInitialData = useCallback(async () => {
+    if (!shop) return; // Don't fetch until we have the shop domain
     try {
       const res = await fetch(`/api/faqs?shop=${shop}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -189,9 +192,11 @@ export default function Index() {
     } finally {
       setIsInitializing(false);
     }
-  };
+  }, [shop]);
 
-  useEffect(() => { fetchInitialData(); }, [shop]);
+  useEffect(() => {
+    fetchInitialData();
+  }, [fetchInitialData]);
 
   const sendApiRequest = async (payload) => {
     setIsLoading(true);
@@ -213,7 +218,7 @@ export default function Index() {
     }
   };
 
-  // --- ACTIONS (Original FAQs) ---
+  // ACTIONS (Original FAQs)
   const handleApplyTheme = async () => {
     await sendApiRequest({ intent: "saveSettings", ...draftSettings });
     setSettings(draftSettings);
@@ -242,7 +247,8 @@ export default function Index() {
     const initialSelectionIds = currentMappings.map(m => ({ id: m.productId }));
 
     try {
-      const selected = await shopify.resourcePicker({
+      // Assumes Shopify App Bridge is globally available in your React setup
+      const selected = await window.shopify.resourcePicker({
         type: "product",
         multiple: true,
         action: "select",
@@ -265,9 +271,8 @@ export default function Index() {
     showToast("Product removed");
   };
 
-  // --- ACTIONS (New Testimonials) ---
+  // ACTIONS (New Testimonials)
   const handleApplyTestiTheme = () => {
-    // Simulating save since there is no provided API route for testimonials yet
     setIsLoading(true);
     setTimeout(() => {
       setTestiSettings(testiDraftSettings); 
@@ -312,10 +317,9 @@ export default function Index() {
     }
   };
 
-
   if (isInitializing) return <div style={{ padding: "40px", textAlign: "center" }}>Loading App Data...</div>;
 
-  // --- RENDER PREPARATION ---
+  // RENDER PREPARATION
   const groupedFaqs = faqs.reduce((acc, faq) => {
     const key = faq.title || "Untitled Set";
     if (!acc[key]) acc[key] = [];
@@ -330,9 +334,7 @@ export default function Index() {
     return acc;
   }, {});
 
-  // ==========================================
   // VIEW: FAQ THEME EDITOR (Original)
-  // ==========================================
   if (currentView === "theme_editor") {
     const previewFaqs = faqs.length > 0 ? faqs.slice(0, 3) : [{ id: 1, question: "Question?", answer: "Answer." }];
     return (
@@ -378,9 +380,7 @@ export default function Index() {
     );
   }
 
-  // ==========================================
   // VIEW: TESTIMONIAL THEME EDITOR (New)
-  // ==========================================
   if (currentView === "testi_theme_editor") {
     const previewTesti = testimonials.length > 0 ? testimonials.slice(0, 3) : INITIAL_TESTIMONIALS;
     return (
@@ -426,10 +426,7 @@ export default function Index() {
     );
   }
 
-
-  // ==========================================
   // VIEW: FAQ EDITOR (Original)
-  // ==========================================
   if (currentView === "faq_editor") {
     const isEditing = formRows.some(row => row.id && !row.id.toString().includes("temp"));
     return (
@@ -469,9 +466,7 @@ export default function Index() {
     );
   }
 
-  // ==========================================
   // VIEW: TESTIMONIAL EDITOR (New)
-  // ==========================================
   if (currentView === "testi_editor") {
     const isEditing = testiFormRows.some(row => row.id && !row.id.toString().includes("temp"));
     return (
@@ -536,9 +531,7 @@ export default function Index() {
     );
   }
 
-  // ==========================================
   // VIEW: FAQ LIST (Original)
-  // ==========================================
   if (currentView === "faq_list") {
     return (
       <SPage heading="FAQ Manager" primaryAction={<SButton onClick={() => setCurrentView("dashboard")}>Back to Dashboard</SButton>}>
@@ -579,9 +572,7 @@ export default function Index() {
     );
   }
 
-  // ==========================================
   // VIEW: TESTIMONIAL LIST (New)
-  // ==========================================
   if (currentView === "testi_list") {
     return (
       <SPage heading="Testimonials Manager" primaryAction={<SButton onClick={() => setCurrentView("dashboard")}>Back to Dashboard</SButton>}>
@@ -606,7 +597,6 @@ export default function Index() {
                    </div>
                    <div style={{ display: "flex", gap: "10px" }}>
                      <SButton onClick={() => { 
-                        // Mock product assignment for testimonials
                         if(window.confirm(`Simulate assigning "${title}" to products?`)) showToast("Assigned to products!"); 
                      }}>🔗 Choose Products</SButton>
                      <SButton onClick={() => { 
@@ -626,9 +616,7 @@ export default function Index() {
     );
   }
 
-  // ==========================================
   // VIEW: DASHBOARD (COMBINED)
-  // ==========================================
   return (
     <>
       <SToast message={toastMessage} />
