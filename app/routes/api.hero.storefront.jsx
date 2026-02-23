@@ -3,8 +3,21 @@ import db from "../db.server.js";
 const corsHeaders = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, ngrok-skip-browser-warning",
 };
 
+// 👉 ADDED: This catches the browser's CORS preflight check
+export const action = async ({ request }) => {
+    if (request.method === "OPTIONS") {
+        return new Response(null, { status: 204, headers: corsHeaders });
+    }
+    return new Response(JSON.stringify({ error: "Method not allowed" }), { 
+        status: 405, 
+        headers: { "Content-Type": "application/json", ...corsHeaders } 
+    });
+};
+
+// Your existing loader
 export const loader = async ({ request }) => {
     const url = new URL(request.url);
     const shopParam = url.searchParams.get("shop");
