@@ -12,15 +12,31 @@ export const loader = async ({ request }) => {
   const shop = url.searchParams.get("shop") || "";
 
   try {
+    // --- Fetch FAQs ---
     const faqs = await db.fAQ.findMany({ orderBy: { createdAt: "asc" } });
     const settings = (await db.fAQSettings.findFirst({ where: shop ? { shop } : undefined })) || { style: "accordion", color: "#008060", radius: 8 };
     const mappings = await db.productFAQMapping.findMany();
 
+    // --- Fetch Testimonials ---
     const testimonials = await db.testimonial.findMany({ orderBy: { createdAt: "asc" } });
     const testiSettings = (await db.testimonialSettings.findFirst({ where: shop ? { shop } : undefined })) || { style: "grid", color: "#ffb800", radius: 12 };
     const testiMappings = await db.productTestimonialMapping.findMany();
 
-    return jsonResponse({ faqs, settings, mappings, testimonials, testiSettings, testiMappings });
+    // --- Fetch Hero UI ---
+    const heroSettings = (await db.heroSettings.findFirst({ where: shop ? { shop } : undefined })) || { style: "centered", color: "#000000" };
+    const heroContent = (await db.heroContent.findFirst({ where: shop ? { shop } : undefined })) || { 
+      heading: "Welcome to Our Store", 
+      subheading: "Discover the best products for your needs.", 
+      buttonText: "Shop Now", 
+      buttonUrl: "/collections/all", 
+      imageUrl: "" 
+    };
+
+    return jsonResponse({ 
+      faqs, settings, mappings, 
+      testimonials, testiSettings, testiMappings,
+      heroSettings, heroContent
+    });
   } catch (error) {
     console.error("Error fetching admin data:", error);
     return jsonResponse({ error: "Failed to fetch data" }, 500);
@@ -33,7 +49,9 @@ export const action = async ({ request }) => {
   const shopName = body.shop || "default-shop.myshopify.com";
 
   try {
-    // --- FAQ Intents ---
+    // ==========================================
+    // FAQ INTENTS
+    // ==========================================
     if (intent === "saveSettings") {
       const { style, color, radius } = body;
       await db.fAQSettings.upsert({
@@ -78,7 +96,9 @@ export const action = async ({ request }) => {
       return jsonResponse({ success: true });
     }
 
-    // --- Testimonial Intents ---
+    // ==========================================
+    // TESTIMONIAL INTENTS
+    // ==========================================
     if (intent === "saveTestiSettings") {
       const { style, color, radius } = body;
       await db.testimonialSettings.upsert({
@@ -123,7 +143,32 @@ export const action = async ({ request }) => {
       return jsonResponse({ success: true });
     }
 
+    // ==========================================
+    // HERO UI INTENTS
+    // ==========================================
+    if (intent === "saveHeroSettings") {
+      const { style, color } = body;
+      await db.heroSettings.upsert({
+        where: { shop: shopName },
+        update: { style, color },
+        create: { shop: shopName, style, color },
+      });
+      return jsonResponse({ success: true });
+    }
+
+    if (intent === "saveHeroContent") {
+      const { heading, subheading, buttonText, buttonUrl, imageUrl } = body;
+      await db.heroContent.upsert({
+        where: { shop: shopName },
+        update: { heading, subheading, buttonText, buttonUrl, imageUrl },
+        create: { shop: shopName, heading, subheading, buttonText, buttonUrl, imageUrl },
+      });
+      return jsonResponse({ success: true });
+    }
+
+    // Fallback for unknown intents
     return jsonResponse({ error: "Unknown intent" }, 400);
+
   } catch (error) {
     console.error("Database error during POST:", error);
     return jsonResponse({ error: "Internal Server Error" }, 500);

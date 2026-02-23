@@ -1,0 +1,153 @@
+{% schema %}
+{
+  "name": "Homepage Hero UI",
+  "target": "body",
+  "settings": []
+}
+{% endschema %}
+
+<div id="hero-app-embedded"></div>
+
+<style>
+  /* Base Container */
+  #hero-app-embedded { 
+    width: 100%; 
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+    display: block; 
+  }
+  
+  /* 1. Centered Layout Styles */
+  .hero-centered {
+    position: relative; 
+    padding: 120px 20px; 
+    text-align: center; 
+    color: white; 
+    background-size: cover; 
+    background-position: center;
+  }
+  .hero-centered-overlay {
+    position: absolute; 
+    top: 0; left: 0; right: 0; bottom: 0; 
+    background: rgba(0,0,0,0.4); 
+    z-index: 1;
+  }
+  .hero-content { 
+    position: relative; 
+    z-index: 2; 
+    max-width: 800px; 
+    margin: 0 auto; 
+  }
+  .hero-heading { 
+    font-size: clamp(32px, 5vw, 56px); 
+    font-weight: 800; 
+    margin: 0 0 16px 0; 
+    color: white;
+    line-height: 1.2;
+  }
+  .hero-sub { 
+    font-size: clamp(16px, 2vw, 20px); 
+    margin: 0 0 32px 0; 
+    color: rgba(255,255,255,0.9);
+  }
+  .hero-btn { 
+    display: inline-block; 
+    padding: 14px 32px; 
+    background: white; 
+    color: black; 
+    text-decoration: none; 
+    font-weight: 600; 
+    border-radius: 4px; 
+    transition: transform 0.2s;
+  }
+  .hero-btn:hover { transform: translateY(-2px); }
+
+  /* 2. Split Layout Styles */
+  .hero-split {
+    display: flex; 
+    flex-wrap: wrap; 
+    color: white; 
+    min-height: 500px;
+  }
+  .hero-split-text { 
+    flex: 1; 
+    min-width: 300px; 
+    display: flex; 
+    flex-direction: column; 
+    justify-content: center; 
+    padding: 8% 5%; 
+  }
+  .hero-split-img { 
+    flex: 1; 
+    min-width: 300px; 
+    background-size: cover; 
+    background-position: center; 
+    min-height: 400px;
+  }
+</style>
+
+<script>
+  (function() {
+    // SECURITY: Only execute this script if we are on the Homepage
+    if (window.location.pathname !== "/") return;
+
+    var shopDomain = '{{ shop.permanent_domain }}';
+    
+    // Replace this with your actual Vercel/production URL
+    var appUrl = "https://themee-xi.vercel.app"; 
+    var API_URL = appUrl + "/api/hero/storefront";
+
+    // Fetch the data from your database
+    fetch(API_URL + "?shop=" + shopDomain)
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        // If no content is set up yet, do nothing
+        if (!data || !data.content) return;
+        renderHero(data.content, data.config);
+      })
+      .catch(function(err) { console.error("Hero App Error:", err); });
+
+    function renderHero(content, config) {
+      var container = document.getElementById('hero-app-embedded');
+      if (!container) return;
+
+      // CRITICAL: Find the main content wrapper to inject at the VERY TOP
+      var main = document.querySelector('main') || document.querySelector('#MainContent');
+      if (main) {
+        main.prepend(container); // prepend() puts it as the very first child!
+      } else {
+        document.body.prepend(container); // Fallback
+      }
+
+      var html = '';
+
+      // Render Layout 1: Centered
+      if (config.style === 'centered') {
+        var bgImage = content.imageUrl ? content.imageUrl : 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=2000&q=80';
+        
+        html += '<div class="hero-centered" style="background-color: '+config.color+'; background-image: url('+bgImage+');">' +
+                  '<div class="hero-centered-overlay"></div>' +
+                  '<div class="hero-content">' +
+                    '<h1 class="hero-heading">' + content.heading + '</h1>' +
+                    '<p class="hero-sub">' + content.subheading + '</p>' +
+                    '<a href="'+content.buttonUrl+'" class="hero-btn">' + content.buttonText + '</a>' +
+                  '</div>' +
+                '</div>';
+      } 
+      // Render Layout 2: Split Screen
+      else if (config.style === 'split') {
+        var bgImage = content.imageUrl ? content.imageUrl : 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=1000&q=80';
+        
+        html += '<div class="hero-split" style="background-color: '+config.color+';">' +
+                  '<div class="hero-split-text">' +
+                    '<h1 class="hero-heading" style="color:white;">' + content.heading + '</h1>' +
+                    '<p class="hero-sub" style="color:white;">' + content.subheading + '</p>' +
+                    '<div><a href="'+content.buttonUrl+'" class="hero-btn">' + content.buttonText + '</a></div>' +
+                  '</div>' +
+                  '<div class="hero-split-img" style="background-image: url('+bgImage+');"></div>' +
+                '</div>';
+      }
+
+      container.innerHTML = html;
+    }
+  })();
+</script>

@@ -5,7 +5,9 @@ No Remix dependencies are used.
 */
 import React, { useState, useEffect, useCallback } from "react";
 
-// Mock FAQ Templates
+// ===========================================
+// MOCK TEMPLATES & STYLES (FAQs)
+// ===========================================
 const UI_STYLES = [
   { id: 'accordion', label: 'Classic Accordion', desc: 'Standard expandable list' },
   { id: 'grid', label: 'Bento Grid', desc: 'Modern card layout' },
@@ -18,7 +20,59 @@ const GridTemplate = ({ faqs, config }) => ( <div style={{ display: 'grid', grid
 const MinimalTemplate = ({ faqs, config }) => ( <div> {faqs.map((faq) => ( <div key={faq.id} style={{ padding: '15px 0', borderBottom: '1px solid #e1e3e5' }}> <h3 style={{ margin: '0 0 5px 0', fontSize: '16px' }}>{faq.question || "Question?"}</h3> <p style={{ margin: 0, color: '#666', fontSize: '14px' }}>{faq.answer || "Answer goes here."}</p> </div> ))} </div> );
 const ChatTemplate = ({ faqs, config }) => ( <div style={{ border: '1px solid #e1e3e5', borderRadius: `${config.radius}px`, padding: '15px', background: '#f9fafb' }}> {faqs.map(f => ( <div key={f.id} style={{ alignSelf: 'flex-end', border: `1px solid ${config.color}`, color: config.color, padding: '8px 15px', borderRadius: '15px 15px 0 15px', fontSize: '13px', marginBottom: '10px', background: 'white' }}> {f.question || "Question?"} </div> ))} </div> );
 
-// Mock UI Components
+// ===========================================
+// MOCK TEMPLATES & STYLES (Testimonials)
+// ===========================================
+const INITIAL_TESTIMONIALS = [
+  { id: 1, title: "Homepage Reviews", author: "Sarah Jenkins", subtitle: "Verified Buyer", rating: 5, content: "Absolutely love this product! It has completely changed my daily routine." },
+  { id: 2, title: "Homepage Reviews", author: "David Chen", subtitle: "Tech Enthusiast", rating: 4, content: "Great quality and works exactly as described. The customer service team was also very helpful." },
+];
+
+const TESTIMONIAL_UI_STYLES = [
+  { id: 'grid', label: 'Bento Grid', desc: 'Modern card layout with stars' },
+  { id: 'list', label: 'Stacked List', desc: 'Clean vertical list with avatars' },
+  { id: 'minimal', label: 'Minimal Quotes', desc: 'Large text, focus on typography' },
+  { id: 'social', label: 'Social Cards', desc: 'Looks like Twitter/Social posts' },
+];
+
+const StarRating = ({ rating, color }) => ( <div style={{ display: 'flex', gap: '2px', marginBottom: '8px' }}> {[1, 2, 3, 4, 5].map(star => ( <svg key={star} width="16" height="16" viewBox="0 0 24 24" fill={star <= rating ? color : "#e1e3e5"} xmlns="http://www.w3.org/2000/svg"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" /></svg> ))} </div> );
+const AvatarPlaceholder = ({ name, color }) => ( <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: `${color}20`, color: color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '16px', flexShrink: 0 }}> {name ? name.charAt(0).toUpperCase() : '?'} </div> );
+
+const TestimonialGridTemplate = ({ testimonials, config }) => ( <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}> {testimonials.map((testi) => ( <div key={testi.id} style={{ padding: '20px', border: '1px solid #e1e3e5', borderRadius: `${config.radius}px`, backgroundColor: 'white', display: 'flex', flexDirection: 'column' }}> <StarRating rating={testi.rating} color={config.color} /> <p style={{ margin: '0 0 15px 0', color: '#444', fontSize: '14px', lineHeight: '1.5', flex: 1 }}>"{testi.content}"</p> <div> <h4 style={{ margin: '0 0 2px 0', fontSize: '14px', fontWeight: 'bold', color: '#202223' }}>{testi.author}</h4> <span style={{ fontSize: '12px', color: '#666' }}>{testi.subtitle}</span> </div> </div> ))} </div> );
+const TestimonialListTemplate = ({ testimonials, config }) => ( <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}> {testimonials.map((testi) => ( <div key={testi.id} style={{ padding: '20px', border: '1px solid #e1e3e5', borderRadius: `${config.radius}px`, backgroundColor: 'white', display: 'flex', gap: '15px', alignItems: 'flex-start' }}> <AvatarPlaceholder name={testi.author} color={config.color} /> <div> <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}> <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 'bold', color: '#202223' }}>{testi.author}</h4> <span style={{ fontSize: '12px', color: '#666' }}>• {testi.subtitle}</span> </div> <StarRating rating={testi.rating} color={config.color} /> <p style={{ margin: '8px 0 0 0', color: '#444', fontSize: '14px', lineHeight: '1.5' }}>{testi.content}</p> </div> </div> ))} </div> );
+const TestimonialMinimalTemplate = ({ testimonials, config }) => ( <div style={{ display: 'flex', flexDirection: 'column', gap: '40px', padding: '20px 0' }}> {testimonials.map((testi) => ( <div key={testi.id} style={{ textAlign: 'center', maxWidth: '600px', margin: '0 auto' }}> <div style={{ color: config.color, fontSize: '40px', lineHeight: '0.8', opacity: 0.5, marginBottom: '10px' }}>"</div> <p style={{ margin: '0 0 20px 0', color: '#202223', fontSize: '18px', fontStyle: 'italic', lineHeight: '1.6' }}>{testi.content}</p> <h4 style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: 'bold', color: '#202223', textTransform: 'uppercase', letterSpacing: '1px' }}>— {testi.author}</h4> <span style={{ fontSize: '12px', color: '#666' }}>{testi.subtitle}</span> </div> ))} </div> );
+const TestimonialSocialTemplate = ({ testimonials, config }) => ( <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '15px' }}> {testimonials.map((testi) => ( <div key={testi.id} style={{ padding: '20px', border: '1px solid #e1e3e5', borderRadius: `${config.radius}px`, backgroundColor: 'white', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}> <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '15px' }}> <AvatarPlaceholder name={testi.author} color={config.color} /> <div> <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 'bold', color: '#202223' }}>{testi.author}</h4> <span style={{ fontSize: '13px', color: '#666' }}>@{testi.author.replace(/\s+/g, '').toLowerCase()}</span> </div> <div style={{ marginLeft: 'auto', color: '#1da1f2' }}> <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/></svg> </div> </div> <p style={{ margin: 0, color: '#202223', fontSize: '14px', lineHeight: '1.5' }}>{testi.content}</p> <div style={{ marginTop: '15px', color: config.color, fontSize: '13px', fontWeight: '500' }}> {testi.rating === 5 ? 'Highly Recommended!' : 'Verified Purchase'} </div> </div> ))} </div> );
+
+// ===========================================
+// MOCK TEMPLATES & STYLES (Hero UI)
+// ===========================================
+const HERO_STYLES = [
+  { id: 'centered', label: 'Centered Focus', desc: 'Text centered over background' },
+  { id: 'split', label: 'Split Screen', desc: 'Text on left, image on right' },
+];
+
+const HeroCenteredTemplate = ({ content, config }) => (
+  <div style={{ background: config.color, color: 'white', padding: '60px 20px', textAlign: 'center', borderRadius: '8px', backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url(${content.imageUrl || 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=1000&q=80'})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+    <h1 style={{ fontSize: '32px', margin: '0 0 10px 0' }}>{content.heading || 'Welcome'}</h1>
+    <p style={{ fontSize: '16px', margin: '0 0 20px 0' }}>{content.subheading || 'Subheading'}</p>
+    <button style={{ background: 'white', color: 'black', padding: '10px 20px', border: 'none', borderRadius: '4px', fontWeight: 'bold' }}>{content.buttonText || 'Shop Now'}</button>
+  </div>
+);
+
+const HeroSplitTemplate = ({ content, config }) => (
+  <div style={{ display: 'flex', background: config.color, color: 'white', borderRadius: '8px', overflow: 'hidden' }}>
+    <div style={{ flex: 1, padding: '40px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+      <h1 style={{ fontSize: '28px', margin: '0 0 10px 0' }}>{content.heading || 'Welcome'}</h1>
+      <p style={{ fontSize: '14px', margin: '0 0 20px 0' }}>{content.subheading || 'Subheading'}</p>
+      <div><button style={{ background: 'white', color: 'black', padding: '10px 20px', border: 'none', borderRadius: '4px', fontWeight: 'bold' }}>{content.buttonText || 'Shop Now'}</button></div>
+    </div>
+    <div style={{ flex: 1, backgroundImage: `url(${content.imageUrl || 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=1000&q=80'})`, backgroundSize: 'cover', backgroundPosition: 'center', minHeight: '250px' }}></div>
+  </div>
+);
+
+// ===========================================
+// REUSABLE UI COMPONENTS
+// ===========================================
 const SPage = ({ children, heading, primaryAction }) => ( <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "20px", fontFamily: "sans-serif" }}> <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}> <h1 style={{ fontSize: "28px", fontWeight: "700", margin: 0, color: "#202223" }}>{heading}</h1> {primaryAction} </div> {children} </div> );
 const SButton = ({ children, onClick, variant = "default", tone, loading }) => ( <button onClick={onClick} disabled={loading} style={{ background: variant === 'primary' ? (tone === 'critical' ? '#d82c0d' : '#000') : 'transparent', color: variant === 'primary' ? '#fff' : (tone === 'critical' ? '#d82c0d' : '#005bd3'), border: variant === 'primary' ? 'none' : '1px solid #babfc3', padding: "8px 16px", borderRadius: "4px", cursor: loading ? "wait" : "pointer", fontWeight: "500", fontSize: "14px", opacity: loading ? 0.7 : 1 }}>{loading ? "Saving..." : children}</button> );
 const SSection = ({ heading, children }) => ( <div style={{ background: "#fff", borderRadius: "8px", border: "1px solid #e1e3e5", padding: "20px", marginBottom: "20px", boxShadow: "0 0 0 1px rgba(63, 63, 68, 0.05), 0 1px 3px 0 rgba(63, 63, 68, 0.15)" }}> {heading && <h3 style={{ fontSize: "16px", fontWeight: "600", marginTop: 0, marginBottom: "15px" }}>{heading}</h3>} {children} </div> );
@@ -32,108 +86,9 @@ const SToast = ({ message }) => message ? <div style={{ position: "fixed", botto
 const SProductTag = ({ label, onRemove }) => ( <div style={{ display: "inline-flex", alignItems: "center", background: "#e4e5e7", padding: "4px 8px", borderRadius: "4px", fontSize: "12px" }}> {label} <span onClick={onRemove} style={{ marginLeft: "5px", cursor: "pointer", fontWeight: "bold" }}>×</span> </div> );
 const SAddButton = ({ onClick, label }) => ( <div onClick={onClick} style={{ textAlign: "center", padding: "15px", border: "1px dashed #babfc3", borderRadius: "4px", cursor: "pointer", background: "#f9fafb", marginTop: "10px", fontWeight: "600" }}>{label}</div> );
 
-// TESTIMONIAL MOCK DATA & CONFIG
-const INITIAL_TESTIMONIALS = [
-  { id: 1, title: "Homepage Reviews", author: "Sarah Jenkins", subtitle: "Verified Buyer", rating: 5, content: "Absolutely love this product! It has completely changed my daily routine." },
-  { id: 2, title: "Homepage Reviews", author: "David Chen", subtitle: "Tech Enthusiast", rating: 4, content: "Great quality and works exactly as described. The customer service team was also very helpful." },
-];
-
-const TESTIMONIAL_UI_STYLES = [
-  { id: 'grid', label: 'Bento Grid', desc: 'Modern card layout with stars' },
-  { id: 'list', label: 'Stacked List', desc: 'Clean vertical list with avatars' },
-  { id: 'minimal', label: 'Minimal Quotes', desc: 'Large text, focus on typography' },
-  { id: 'social', label: 'Social Cards', desc: 'Looks like Twitter/Social posts' },
-];
-
-const StarRating = ({ rating, color }) => (
-  <div style={{ display: 'flex', gap: '2px', marginBottom: '8px' }}>
-    {[1, 2, 3, 4, 5].map(star => (
-      <svg key={star} width="16" height="16" viewBox="0 0 24 24" fill={star <= rating ? color : "#e1e3e5"} xmlns="http://www.w3.org/2000/svg">
-        <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
-      </svg>
-    ))}
-  </div>
-);
-
-const AvatarPlaceholder = ({ name, color }) => (
-  <div style={{ 
-    width: '40px', height: '40px', borderRadius: '50%', background: `${color}20`, 
-    color: color, display: 'flex', alignItems: 'center', justifyContent: 'center', 
-    fontWeight: 'bold', fontSize: '16px', flexShrink: 0 
-  }}>
-    {name ? name.charAt(0).toUpperCase() : '?'}
-  </div>
-);
-
-const TestimonialGridTemplate = ({ testimonials, config }) => (
-  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
-    {testimonials.map((testi) => (
-      <div key={testi.id} style={{ padding: '20px', border: '1px solid #e1e3e5', borderRadius: `${config.radius}px`, backgroundColor: 'white', display: 'flex', flexDirection: 'column' }}>
-        <StarRating rating={testi.rating} color={config.color} />
-        <p style={{ margin: '0 0 15px 0', color: '#444', fontSize: '14px', lineHeight: '1.5', flex: 1 }}>"{testi.content}"</p>
-        <div>
-          <h4 style={{ margin: '0 0 2px 0', fontSize: '14px', fontWeight: 'bold', color: '#202223' }}>{testi.author}</h4>
-          <span style={{ fontSize: '12px', color: '#666' }}>{testi.subtitle}</span>
-        </div>
-      </div>
-    ))}
-  </div>
-);
-
-const TestimonialListTemplate = ({ testimonials, config }) => (
-  <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-    {testimonials.map((testi) => (
-      <div key={testi.id} style={{ padding: '20px', border: '1px solid #e1e3e5', borderRadius: `${config.radius}px`, backgroundColor: 'white', display: 'flex', gap: '15px', alignItems: 'flex-start' }}>
-        <AvatarPlaceholder name={testi.author} color={config.color} />
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-            <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 'bold', color: '#202223' }}>{testi.author}</h4>
-            <span style={{ fontSize: '12px', color: '#666' }}>• {testi.subtitle}</span>
-          </div>
-          <StarRating rating={testi.rating} color={config.color} />
-          <p style={{ margin: '8px 0 0 0', color: '#444', fontSize: '14px', lineHeight: '1.5' }}>{testi.content}</p>
-        </div>
-      </div>
-    ))}
-  </div>
-);
-
-const TestimonialMinimalTemplate = ({ testimonials, config }) => (
-  <div style={{ display: 'flex', flexDirection: 'column', gap: '40px', padding: '20px 0' }}>
-    {testimonials.map((testi) => (
-      <div key={testi.id} style={{ textAlign: 'center', maxWidth: '600px', margin: '0 auto' }}>
-        <div style={{ color: config.color, fontSize: '40px', lineHeight: '0.8', opacity: 0.5, marginBottom: '10px' }}>"</div>
-        <p style={{ margin: '0 0 20px 0', color: '#202223', fontSize: '18px', fontStyle: 'italic', lineHeight: '1.6' }}>{testi.content}</p>
-        <h4 style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: 'bold', color: '#202223', textTransform: 'uppercase', letterSpacing: '1px' }}>— {testi.author}</h4>
-        <span style={{ fontSize: '12px', color: '#666' }}>{testi.subtitle}</span>
-      </div>
-    ))}
-  </div>
-);
-
-const TestimonialSocialTemplate = ({ testimonials, config }) => (
-  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '15px' }}>
-    {testimonials.map((testi) => (
-      <div key={testi.id} style={{ padding: '20px', border: '1px solid #e1e3e5', borderRadius: `${config.radius}px`, backgroundColor: 'white', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '15px' }}>
-          <AvatarPlaceholder name={testi.author} color={config.color} />
-          <div>
-            <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 'bold', color: '#202223' }}>{testi.author}</h4>
-            <span style={{ fontSize: '13px', color: '#666' }}>@{testi.author.replace(/\s+/g, '').toLowerCase()}</span>
-          </div>
-          <div style={{ marginLeft: 'auto', color: '#1da1f2' }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/></svg>
-          </div>
-        </div>
-        <p style={{ margin: 0, color: '#202223', fontSize: '14px', lineHeight: '1.5' }}>{testi.content}</p>
-        <div style={{ marginTop: '15px', color: config.color, fontSize: '13px', fontWeight: '500' }}>
-          {testi.rating === 5 ? 'Highly Recommended!' : 'Verified Purchase'}
-        </div>
-      </div>
-    ))}
-  </div>
-);
-
+// ===========================================
+// MAIN COMPONENT
+// ===========================================
 export default function Index() {
   const [shop, setShop] = useState("");
 
@@ -169,6 +124,11 @@ export default function Index() {
   const [testiDeletedIds, setTestiDeletedIds] = useState([]);
   const [assigningTestiTitle, setAssigningTestiTitle] = useState(null);
 
+  // STATE: Hero UI
+  const [heroContent, setHeroContent] = useState({ heading: "Welcome to Our Store", subheading: "Discover the best products.", buttonText: "Shop Now", buttonUrl: "/collections/all", imageUrl: "" });
+  const [heroSettings, setHeroSettings] = useState({ style: "centered", color: "#000000" });
+  const [heroDraftSettings, setHeroDraftSettings] = useState(null);
+
   // DATA FETCHING
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -193,6 +153,12 @@ export default function Index() {
       setTestiMappings(data.testiMappings || []);
       setTestiSettings(data.testiSettings || { style: "grid", color: "#ffb800", radius: 12 });
       setTestiDraftSettings(data.testiSettings || { style: "grid", color: "#ffb800", radius: 12 });
+
+      // Load Hero Data
+      if (data.heroContent) setHeroContent(data.heroContent);
+      setHeroSettings(data.heroSettings || { style: "centered", color: "#000000" });
+      setHeroDraftSettings(data.heroSettings || { style: "centered", color: "#000000" });
+
     } catch (error) {
       console.error("Failed to fetch data:", error);
       showToast("Error loading data");
@@ -225,7 +191,7 @@ export default function Index() {
     }
   };
 
-  // ACTIONS (Original FAQs)
+  // ACTIONS (FAQs)
   const handleApplyTheme = async () => {
     await sendApiRequest({ intent: "saveSettings", ...draftSettings });
     setSettings(draftSettings);
@@ -277,7 +243,7 @@ export default function Index() {
     showToast("Product removed");
   };
 
-  // ACTIONS (New Testimonials - Now using the Database APIs)
+  // ACTIONS (Testimonials)
   const handleApplyTestiTheme = async () => {
     await sendApiRequest({ intent: "saveTestiSettings", ...testiDraftSettings });
     setTestiSettings(testiDraftSettings); 
@@ -334,9 +300,23 @@ export default function Index() {
     showToast("Product removed");
   };
 
+  // ACTIONS (Hero UI)
+  const handleApplyHeroTheme = async () => {
+    await sendApiRequest({ intent: "saveHeroSettings", ...heroDraftSettings });
+    setHeroSettings(heroDraftSettings); 
+    showToast("Hero Layout Updated!");
+    setCurrentView("dashboard");
+  };
+
+  const handleSaveHeroContent = async () => {
+    await sendApiRequest({ intent: "saveHeroContent", ...heroContent });
+    showToast("Hero Content Saved!");
+    setCurrentView("dashboard");
+  };
+
+  // INITIAL RENDER BLOCK
   if (isInitializing) return <div style={{ padding: "40px", textAlign: "center" }}>Loading App Data...</div>;
 
-  // RENDER PREPARATION
   const groupedFaqs = faqs.reduce((acc, faq) => {
     const key = faq.title || "Untitled Set";
     if (!acc[key]) acc[key] = [];
@@ -351,7 +331,89 @@ export default function Index() {
     return acc;
   }, {});
 
-  // VIEW: FAQ THEME EDITOR (Original)
+  // VIEW: HERO CONTENT EDITOR
+  if (currentView === "hero_editor") {
+    return (
+      <SPage heading="Manage Hero Content" primaryAction={<SButton onClick={() => setCurrentView("dashboard")}>Cancel</SButton>}>
+        <div style={{ maxWidth: "700px", margin: "0 auto" }}>
+          <SStack direction="block" gap="large">
+            <SSection heading="Hero Text & Media">
+              <SStack direction="block" gap="base">
+                <div>
+                  <SLabel>Heading</SLabel>
+                  <SInput type="text" value={heroContent.heading} onChange={e => setHeroContent({...heroContent, heading: e.target.value})} placeholder="e.g. Welcome to Our Store" />
+                </div>
+                <div>
+                  <SLabel>Subheading</SLabel>
+                  <STextArea value={heroContent.subheading} onChange={e => setHeroContent({...heroContent, subheading: e.target.value})} rows="2" placeholder="e.g. Discover the best products." />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                  <div>
+                    <SLabel>Button Text</SLabel>
+                    <SInput type="text" value={heroContent.buttonText} onChange={e => setHeroContent({...heroContent, buttonText: e.target.value})} placeholder="Shop Now" />
+                  </div>
+                  <div>
+                    <SLabel>Button URL</SLabel>
+                    <SInput type="text" value={heroContent.buttonUrl} onChange={e => setHeroContent({...heroContent, buttonUrl: e.target.value})} placeholder="/collections/all" />
+                  </div>
+                </div>
+                <div>
+                  <SLabel>Background Image URL</SLabel>
+                  <SInput type="text" value={heroContent.imageUrl} onChange={e => setHeroContent({...heroContent, imageUrl: e.target.value})} placeholder="https://..." />
+                  <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>Paste a link to an image. (Tip: Use Shopify Files to upload an image and paste the link here).</p>
+                </div>
+              </SStack>
+            </SSection>
+            <SButton variant="primary" onClick={handleSaveHeroContent} loading={isLoading}>Save Content</SButton>
+          </SStack>
+        </div>
+      </SPage>
+    );
+  }
+
+  // VIEW: HERO THEME EDITOR
+  if (currentView === "hero_theme_editor") {
+    return (
+      <SPage heading="Customize Hero Layout" primaryAction={<SButton onClick={() => setCurrentView("dashboard")}>Cancel</SButton>}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) 1.5fr', gap: '20px' }}>
+          <div>
+            <SSection heading="1. Choose Layout">
+              <div style={{ display: 'grid', gap: '10px' }}>
+                {HERO_STYLES.map(style => (
+                  <div key={style.id} onClick={() => setHeroDraftSettings({ ...heroDraftSettings, style: style.id })}
+                    style={{ padding: '12px', border: heroDraftSettings.style === style.id ? '2px solid #005bd3' : '1px solid #e1e3e5', borderRadius: '8px', cursor: 'pointer', background: heroDraftSettings.style === style.id ? '#f0f8ff' : 'white', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ width: '16px', height: '16px', borderRadius: '50%', border: '1px solid #ccc', background: heroDraftSettings.style === style.id ? '#005bd3' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {heroDraftSettings.style === style.id && <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'white' }} />}
+                    </div>
+                    <div><div style={{ fontWeight: '600', fontSize: '14px' }}>{style.label}</div><div style={{ fontSize: '12px', color: '#666' }}>{style.desc}</div></div>
+                  </div>
+                ))}
+              </div>
+            </SSection>
+            <SSection heading="2. Background Color">
+              <div style={{ marginBottom: '15px' }}>
+                <SLabel>Solid Color Overlay / Background</SLabel>
+                <div style={{ display: 'flex', gap: '10px', marginTop: '5px' }}>
+                  <input type="color" value={heroDraftSettings.color} onChange={(e) => setHeroDraftSettings({ ...heroDraftSettings, color: e.target.value })} style={{ width: '50px', height: '40px', border: '1px solid #ccc', padding: 0, borderRadius: '4px', cursor: 'pointer' }} />
+                  <span style={{ padding: '10px', background: '#f4f4f4', borderRadius: '4px', fontSize: '14px', fontFamily: 'monospace' }}>{heroDraftSettings.color}</span>
+                </div>
+              </div>
+            </SSection>
+            <div style={{ marginTop: '20px' }}><SButton variant="primary" onClick={handleApplyHeroTheme} loading={isLoading}>Save & Publish</SButton></div>
+          </div>
+          <div>
+            <div style={{ position: 'sticky', top: '20px', background: '#f1f2f3', border: '1px solid #dcdcdc', borderRadius: '12px', padding: '20px', minHeight: '500px' }}>
+              <div style={{ marginBottom: '20px', textAlign: 'center', color: '#666', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>Live Preview</div>
+              {heroDraftSettings.style === 'centered' && <HeroCenteredTemplate content={heroContent} config={heroDraftSettings} />}
+              {heroDraftSettings.style === 'split' && <HeroSplitTemplate content={heroContent} config={heroDraftSettings} />}
+            </div>
+          </div>
+        </div>
+      </SPage>
+    );
+  }
+
+  // VIEW: FAQ THEME EDITOR 
   if (currentView === "theme_editor") {
     const previewFaqs = faqs.length > 0 ? faqs.slice(0, 3) : [{ id: 1, question: "Question?", answer: "Answer." }];
     return (
@@ -399,7 +461,6 @@ export default function Index() {
 
   // VIEW: TESTIMONIAL THEME EDITOR
   if (currentView === "testi_theme_editor") {
-    // If empty, fall back to initial mock array just for visual previewing 
     const previewTesti = testimonials.length > 0 ? testimonials.slice(0, 3) : INITIAL_TESTIMONIALS;
     return (
       <SPage heading="Customize Testimonials" primaryAction={<SButton onClick={() => setCurrentView("dashboard")}>Cancel</SButton>}>
@@ -444,7 +505,7 @@ export default function Index() {
     );
   }
 
-  // VIEW: FAQ EDITOR (Original)
+  // VIEW: FAQ EDITOR
   if (currentView === "faq_editor") {
     const isEditing = formRows.some(row => row.id && !row.id.toString().includes("temp"));
     return (
@@ -549,7 +610,7 @@ export default function Index() {
     );
   }
 
-  // VIEW: FAQ LIST (Original)
+  // VIEW: FAQ LIST 
   if (currentView === "faq_list") {
     return (
       <SPage heading="FAQ Manager" primaryAction={<SButton onClick={() => setCurrentView("dashboard")}>Back to Dashboard</SButton>}>
@@ -590,7 +651,7 @@ export default function Index() {
     );
   }
 
-  // VIEW: TESTIMONIAL LIST (Updated to include Product Picker functionality)
+  // VIEW: TESTIMONIAL LIST 
   if (currentView === "testi_list") {
     return (
       <SPage heading="Testimonials Manager" primaryAction={<SButton onClick={() => setCurrentView("dashboard")}>Back to Dashboard</SButton>}>
@@ -607,7 +668,6 @@ export default function Index() {
            
            <SStack direction="block" gap="base">
              {Object.entries(groupedTestimonials).map(([title, list]) => {
-               // Filter mapped products for this specific testimonial set
                const assignedProducts = testiMappings.filter(m => m.testiTitle === title);
                
                return (
@@ -618,7 +678,6 @@ export default function Index() {
                        <p style={{ margin: 0, color: "#666", fontSize: "14px" }}>{list.length} review(s)</p>
                      </div>
                      <div style={{ display: "flex", gap: "10px" }}>
-                       {/* Hooked up to the real product picker */}
                        <SButton onClick={() => handleOpenTestiProductPicker(title)} loading={assigningTestiTitle === title}>🔗 Choose Products</SButton>
                        <SButton onClick={() => { 
                          setTestiFormTitle(title === "Untitled Set" ? "" : title); 
@@ -629,7 +688,6 @@ export default function Index() {
                      </div>
                    </div>
                    
-                   {/* Product Tags rendering block for Testimonials */}
                    {assignedProducts.length > 0 && (
                     <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px solid #e1e3e5" }}>
                       <p style={{ margin: "0 0 8px 0", fontSize: "12px", color: "#666", textTransform: "uppercase", letterSpacing: "0.5px" }}>Assigned Products ({assignedProducts.length})</p>
@@ -657,12 +715,23 @@ export default function Index() {
       <SToast message={toastMessage} />
       <SPage heading="App Dashboard">
         <div style={{ background: "#f0f8ff", border: "1px solid #cce0ff", borderRadius: "8px", padding: "16px 20px", marginTop: "20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div><h3 style={{ margin: "0 0 4px 0", fontSize: "15px", fontWeight: "600", color: "#004085" }}>🚀 Enable on Storefront</h3><p style={{ margin: 0, color: "#004085", fontSize: "14px" }}>Turn on App Embed blocks in your theme settings to display FAQs and Testimonials.</p></div>
+          <div><h3 style={{ margin: "0 0 4px 0", fontSize: "15px", fontWeight: "600", color: "#004085" }}>🚀 Enable on Storefront</h3><p style={{ margin: 0, color: "#004085", fontSize: "14px" }}>Turn on App Embed blocks in your theme settings to display FAQs, Testimonials, and Hero UI.</p></div>
           <SButton onClick={() => window.open(`https://admin.shopify.com`, '_blank')}>Open Theme Editor</SButton>
         </div>
+
+        {/* Hero Section (New) */}
+        <div style={{ marginTop: '30px', marginBottom: '15px' }}>
+          <SHeading>🖼️ Manage Homepage Hero</SHeading>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "20px" }}>
+          <SCard title="Hero Content" desc="Update your main heading, subheading, and background image." actionLabel="Edit Content" onAction={() => setCurrentView("hero_editor")} />
+          <SCard title="Hero Layout" desc={`Current: ${heroSettings.style.charAt(0).toUpperCase() + heroSettings.style.slice(1)} style.`} actionLabel="Change Layout" onAction={() => { setHeroDraftSettings(heroSettings); setCurrentView("hero_theme_editor"); }} />
+        </div>
+
+        <hr style={{ border: 'none', borderTop: '1px solid #e1e3e5', margin: '30px 0' }} />
         
         {/* FAQs Section */}
-        <div style={{ marginTop: '30px', marginBottom: '15px' }}>
+        <div style={{ marginBottom: '15px' }}>
           <SHeading>❓ Manage FAQs</SHeading>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "20px" }}>
@@ -672,7 +741,7 @@ export default function Index() {
 
         <hr style={{ border: 'none', borderTop: '1px solid #e1e3e5', margin: '30px 0' }} />
 
-        {/* Testimonials Section (New) */}
+        {/* Testimonials Section */}
         <div style={{ marginBottom: '15px' }}>
           <SHeading>💬 Manage Testimonials</SHeading>
         </div>

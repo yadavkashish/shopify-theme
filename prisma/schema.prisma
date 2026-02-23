@@ -90,3 +90,23 @@ model ProductTestimonialMapping {
 
   @@unique([testiTitle, productId]) 
 }
+model HeroSettings {
+  id        String   @id @default(uuid())
+  shop      String   @unique
+  style     String   @default("centered") // "centered", "split", "overlay"
+  color     String   @default("#000000")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model HeroContent {
+  id         String   @id @default(uuid())
+  shop       String   @unique
+  heading    String   @default("Welcome to Our Store")
+  subheading String   @default("Discover the best products for your needs.")
+  buttonText String   @default("Shop Now")
+  buttonUrl  String   @default("/collections/all")
+  imageUrl   String   @default("https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=1000&q=80")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
