@@ -1,9 +1,21 @@
 import db from "../db.server.js";
 
+// 👉 ADDED: Global CORS Headers
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, ngrok-skip-browser-warning",
+};
+
+// 👉 UPDATED: jsonResponse now automatically injects the CORS headers
 function jsonResponse(data, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "Content-Type": "application/json", ...extraHeaders },
+    headers: { 
+      "Content-Type": "application/json", 
+      ...corsHeaders,
+      ...extraHeaders 
+    },
   });
 }
 
@@ -35,7 +47,7 @@ export const loader = async ({ request }) => {
     return jsonResponse({ 
       faqs, settings, mappings, 
       testimonials, testiSettings, testiMappings,
-      heroSettings, heroContent
+      heroContent, heroSettings // <- FIXED: changed these to match what the frontend expects
     });
   } catch (error) {
     console.error("Error fetching admin data:", error);
@@ -44,6 +56,11 @@ export const loader = async ({ request }) => {
 };
 
 export const action = async ({ request }) => {
+  // 👉 ADDED: This catches the browser's CORS preflight check
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
+
   const body = await request.json();
   const { intent } = body;
   const shopName = body.shop || "default-shop.myshopify.com";

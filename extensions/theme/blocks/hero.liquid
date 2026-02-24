@@ -1,16 +1,14 @@
 {% schema %}
 {
-  "name": "Homepage Hero UI",
+  "name": "Homepage Hero Override",
   "target": "body",
   "settings": []
 }
 {% endschema %}
 
-<div id="hero-app-embedded"></div>
-
 <style>
-  /* Base Container */
-  #hero-app-embedded { 
+  /* Base Container Styles */
+  .custom-hero-container { 
     width: 100%; 
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
     display: block; 
@@ -87,44 +85,57 @@
 
 <script>
   (function() {
-    // SECURITY: Only execute this script if we are on the Homepage
-    if (window.location.pathname !== "/") return;
+    console.log("🚀 Hero Override Script Started");
 
-    var shopDomain = '{{ shop.permanent_domain }}';
-    
-    // Replace this with your actual Vercel/production URL
+    if (window.location.pathname !== "/") {
+      console.log("🛑 Not on homepage, aborting.");
+      return;
+    }
+
+    var shopDomain = '{{ shop.myshopify_domain }}'; 
     var appUrl = "https://themee-xi.vercel.app"; 
-    var API_URL = appUrl + "/api/hero/storefront";
+    var API_URL = appUrl + "/api/faqs"; // Make sure this matches your Remix route!
 
-    // Fetch the data from your database
+    console.log("📡 Fetching custom hero data for:", shopDomain);
+
     fetch(API_URL + "?shop=" + shopDomain)
-      .then(function(res) { return res.json(); })
-      .then(function(data) {
-        // If no content is set up yet, do nothing
-        if (!data || !data.content) return;
-        renderHero(data.content, data.config);
+      .then(function(res) { 
+        if (!res.ok) throw new Error("HTTP Status " + res.status);
+        return res.json(); 
       })
-      .catch(function(err) { console.error("Hero App Error:", err); });
+      .then(function(data) {
+        console.log("✅ Data received from backend:", data);
 
-    function renderHero(content, config) {
-      var container = document.getElementById('hero-app-embedded');
-      if (!container) return;
-
-      // CRITICAL: Find the main content wrapper to inject at the VERY TOP
-      var main = document.querySelector('main') || document.querySelector('#MainContent');
-      if (main) {
-        main.prepend(container); // prepend() puts it as the very first child!
-      } else {
-        document.body.prepend(container); // Fallback
-      }
-
-      var html = '';
-
-      // Render Layout 1: Centered
-      if (config.style === 'centered') {
-        var bgImage = content.imageUrl ? content.imageUrl : 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=2000&q=80';
+        if (!data || !data.heroContent) {
+          console.log("🛑 Missing 'heroContent' in database, aborting.");
+          return;
+        }
         
-        html += '<div class="hero-centered" style="background-color: '+config.color+'; background-image: url('+bgImage+');">' +
+        console.log("🪄 Data found! Hiding native banner and rendering custom UI.");
+        
+        // Hide the native Dawn banner
+        var styleBlock = document.createElement('style');
+        styleBlock.innerHTML = '.banner, .hero, .slideshow { display: none !important; }';
+        document.head.appendChild(styleBlock);
+
+        renderCustomHero(data.heroContent, data.heroSettings);
+      })
+      .catch(function(err) { 
+        console.error("❌ Hero Override Fetch Error:", err); 
+      });
+
+    function renderCustomHero(content, config) {
+      var main = document.querySelector('main') || document.querySelector('#MainContent');
+      if (!main) return;
+
+      var customHeroWrapper = document.createElement('div');
+      customHeroWrapper.className = 'shopify-section custom-hero-container';
+      customHeroWrapper.id = 'injected-hero-override';
+
+      // (We are just doing the centered layout here for testing quickly)
+      var bgImage = content.imageUrl || 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=2000&q=80';
+      
+      customHeroWrapper.innerHTML = '<div class="hero-centered" style="background-color: '+config.color+'; background-image: url('+bgImage+');">' +
                   '<div class="hero-centered-overlay"></div>' +
                   '<div class="hero-content">' +
                     '<h1 class="hero-heading">' + content.heading + '</h1>' +
@@ -132,22 +143,20 @@
                     '<a href="'+content.buttonUrl+'" class="hero-btn">' + content.buttonText + '</a>' +
                   '</div>' +
                 '</div>';
-      } 
-      // Render Layout 2: Split Screen
-      else if (config.style === 'split') {
-        var bgImage = content.imageUrl ? content.imageUrl : 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=1000&q=80';
-        
-        html += '<div class="hero-split" style="background-color: '+config.color+';">' +
-                  '<div class="hero-split-text">' +
-                    '<h1 class="hero-heading" style="color:white;">' + content.heading + '</h1>' +
-                    '<p class="hero-sub" style="color:white;">' + content.subheading + '</p>' +
-                    '<div><a href="'+content.buttonUrl+'" class="hero-btn">' + content.buttonText + '</a></div>' +
-                  '</div>' +
-                  '<div class="hero-split-img" style="background-image: url('+bgImage+');"></div>' +
-                '</div>';
-      }
 
-      container.innerHTML = html;
+      var nativeBanner = document.querySelector('.banner') || document.querySelector('.hero') || document.querySelector('.slideshow');
+      
+      if (nativeBanner) {
+        var parentSection = nativeBanner.closest('.shopify-section');
+        if (parentSection && parentSection.parentNode) {
+          parentSection.parentNode.insertBefore(customHeroWrapper, parentSection);
+        } else {
+          nativeBanner.parentNode.insertBefore(customHeroWrapper, nativeBanner);
+        }
+      } else {
+        main.prepend(customHeroWrapper);
+      }
+      console.log("🎉 Custom Hero injected successfully!");
     }
   })();
 </script>
