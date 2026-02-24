@@ -87,12 +87,13 @@
   (function() {
     console.log("🚀 Hero Override Script Started");
 
-    if (window.location.pathname !== "/") {
-      console.log("🛑 Not on homepage, aborting.");
+    var shopDomain = '{{ shop.myshopify_domain }}' || window.Shopify.shop; 
+
+    if (window.location.pathname !== "/" || !shopDomain) {
+      console.log("🛑 Not on homepage or missing shop domain, aborting.");
       return;
     }
 
-    var shopDomain = '{{ shop.myshopify_domain }}'; 
     var appUrl = "https://themee-xi.vercel.app"; 
     var API_URL = appUrl + "/api/faqs"; // Make sure this matches your Remix route!
 
@@ -132,10 +133,21 @@
       customHeroWrapper.className = 'shopify-section custom-hero-container';
       customHeroWrapper.id = 'injected-hero-override';
 
-      // (We are just doing the centered layout here for testing quickly)
       var bgImage = content.imageUrl || 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=2000&q=80';
+      var html = '';
       
-      customHeroWrapper.innerHTML = '<div class="hero-centered" style="background-color: '+config.color+'; background-image: url('+bgImage+');">' +
+      // LOGIC RESTORED: Switch based on selected UI style
+      if (config.style === 'split') {
+        html = '<div class="hero-split" style="background-color: '+config.color+';">' +
+                  '<div class="hero-split-text">' +
+                    '<h1 class="hero-heading" style="color:white;">' + content.heading + '</h1>' +
+                    '<p class="hero-sub" style="color:white;">' + content.subheading + '</p>' +
+                    '<div><a href="'+content.buttonUrl+'" class="hero-btn">' + content.buttonText + '</a></div>' +
+                  '</div>' +
+                  '<div class="hero-split-img" style="background-image: url('+bgImage+');"></div>' +
+                '</div>';
+      } else {
+        html = '<div class="hero-centered" style="background-color: '+config.color+'; background-image: url('+bgImage+');">' +
                   '<div class="hero-centered-overlay"></div>' +
                   '<div class="hero-content">' +
                     '<h1 class="hero-heading">' + content.heading + '</h1>' +
@@ -143,6 +155,9 @@
                     '<a href="'+content.buttonUrl+'" class="hero-btn">' + content.buttonText + '</a>' +
                   '</div>' +
                 '</div>';
+      }
+
+      customHeroWrapper.innerHTML = html;
 
       var nativeBanner = document.querySelector('.banner') || document.querySelector('.hero') || document.querySelector('.slideshow');
       
@@ -156,7 +171,7 @@
       } else {
         main.prepend(customHeroWrapper);
       }
-      console.log("🎉 Custom Hero injected successfully!");
+      console.log("🎉 Custom Hero injected successfully! Style applied:", config.style);
     }
   })();
 </script>
