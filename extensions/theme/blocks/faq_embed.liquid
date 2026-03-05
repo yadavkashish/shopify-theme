@@ -6,7 +6,6 @@
 }
 {% endschema %}
 
-<!-- The App Embed Container -->
 <div id="faq-app-embedded"></div>
 
 <style>
@@ -162,9 +161,25 @@
   }
   .chat-user {
     align-self: flex-end;
-    background: rgba(255,255,255,0.6);
     border-radius: 12px 12px 0 12px;
+  }
+  .chat-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .chat-option-btn {
+    padding: 8px 12px;
+    border-radius: 15px;
+    background: white;
     cursor: pointer;
+    font-size: 13px;
+    text-align: left;
+    transition: opacity 0.2s ease;
+  }
+  .chat-option-btn:hover {
+    opacity: 0.8;
   }
 </style>
 
@@ -178,6 +193,9 @@
     var appUrl = "https://themee-xi.vercel.app";
     var API_URL = appUrl + "/api/faqs/product"; // <-- Define API_URL here
 
+    // Store data globally so the onclick handler can access it
+    window.__faqBotData = [];
+
     function loadFaqs() {
       fetch(API_URL + "?shop=" + shopDomain + "&productId=" + productGid)
       .then(function(res) { return res.json(); })
@@ -185,10 +203,35 @@
         if (!data || !data.faqs || data.faqs.length === 0) {
           return;
         }
+        window.__faqBotData = data.faqs;
         renderFaqs(data.faqs, data.config);
       })
       .catch(function(err) { console.log("FAQ App Error:", err); });
     }
+
+    // Global click handler for the support bot options
+    window.handleFaqBotClick = function(index, color) {
+      var faq = window.__faqBotData[index];
+      var chatBody = document.getElementById('faq-chat-body-container');
+      var optionsContainer = document.getElementById('faq-chat-options');
+
+      // 1. Add User's Question Message
+      var userMsg = document.createElement('div');
+      userMsg.className = 'chat-msg chat-user';
+      userMsg.style.background = color;
+      userMsg.style.color = '#fff';
+      userMsg.innerText = faq.question;
+      chatBody.insertBefore(userMsg, optionsContainer);
+
+      // 2. Add Bot's Answer Message
+      var botMsg = document.createElement('div');
+      botMsg.className = 'chat-msg chat-bot';
+      botMsg.innerText = faq.answer;
+      chatBody.insertBefore(botMsg, optionsContainer);
+
+      // Scroll to bottom
+      chatBody.scrollTop = chatBody.scrollHeight;
+    };
 
     function renderFaqs(faqs, config) {
       var container = document.getElementById('faq-app-embedded');
@@ -265,13 +308,18 @@
                     '<div style="width:30px; height:30px; border-radius:50%; background:' + config.color + '; color:#fff; display:flex; align-items:center; justify-content:center; font-size:12px;">AI</div>' +
                     '<span style="font-weight:600; font-size:14px;">Support Bot</span>' +
                   '</div>' +
-                  '<div class="chat-body">' +
-                    '<div class="chat-msg chat-bot">How can I help you today?</div>';
-        faqs.forEach(function(f) {
-          html += '<div class="chat-msg chat-user" style="border:1px solid ' + config.color + '; color:' + config.color + ';">' + f.question + '</div>';
+                  '<div class="chat-body" id="faq-chat-body-container">' +
+                    '<div class="chat-msg chat-bot">How can I help you today?</div>' +
+                    '<div class="chat-options" id="faq-chat-options">';
+        
+        // Add questions as clickable options instead of plain text messages
+        faqs.forEach(function(f, index) {
+          html += '<button class="chat-option-btn" onclick="window.handleFaqBotClick(' + index + ', \'' + config.color + '\')" style="border:1px solid ' + config.color + '; color:' + config.color + ';">' + f.question + '</button>';
         });
-        html +=   '</div>' +
-                '</div>';
+
+        html +=   '</div>' + // Close options
+                  '</div>' + // Close chat-body
+                '</div>'; // Close faq-style-chat
       }
 
       html += '</div>'; // End inner
