@@ -90,7 +90,7 @@ export default function Index() {
   const [assigningFaqTitle, setAssigningFaqTitle] = useState(null);
 
   // STATE: Hero UI
-  const [heroContent, setHeroContent] = useState({ heading: "Welcome to Our Store", subheading: "Discover the best products.", buttonText: "Shop Now", buttonUrl: "/collections/all", imageUrl: "" });
+  const [heroContent, setHeroContent] = useState({ heading: "Welcome to Our Store", subheading: "Discover the  products.", buttonText: "Shop Now", buttonUrl: "/collections/all", imageUrl: "" });
   const [heroSettings, setHeroSettings] = useState({ style: "centered", color: "#000000" });
   const [heroDraftSettings, setHeroDraftSettings] = useState(null);
 
